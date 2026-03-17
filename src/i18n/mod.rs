@@ -1,3 +1,13 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * Copyright (c) 2026 okazoh04
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3.
+ * See the LICENSE file for details.
+ */
+
 /// 言語テーブル定義マクロ
 /// 新言語追加時はここの1行だけ変更すれば、mod/enum/detect/impl Lang が全て自動生成される。
 ///

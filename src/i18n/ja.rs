@@ -1,3 +1,13 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * Copyright (c) 2026 okazoh04
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3.
+ * See the LICENSE file for details.
+ */
+
 // ── フッターヒント ────────────────────────────────────────────────────────────
 pub const HINT_AVC_LIST:     &str = "↑↓/jk:移動  Enter:詳細  /:フィルタ  r:更新  l:ログ  q:終了";
 pub const HINT_AVC_DETAIL:   &str = "A-F:対処選択  Esc/←:戻る  Enter:確認へ";

@@ -1,3 +1,13 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * Copyright (c) 2026 okazoh04
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3.
+ * See the LICENSE file for details.
+ */
+
 // ── 頁尾提示 ──────────────────────────────────────────────────────────────────
 pub const HINT_AVC_LIST:     &str = "↑↓/jk:移動  Enter:詳情  /:篩選  r:重新整理  l:日誌  q:退出";
 pub const HINT_AVC_DETAIL:   &str = "A-F:選擇處置  Esc/←:返回  Enter:確認";

@@ -1,3 +1,13 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * Copyright (c) 2026 okazoh04
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3.
+ * See the LICENSE file for details.
+ */
+
 // ── Bunntekst-hint ────────────────────────────────────────────────────────────
 pub const HINT_AVC_LIST:     &str = "↑↓/jk:Flytt  Enter:Detaljer  /:Filtrer  r:Last inn igjen  l:Logg  q:Avslutt";
 pub const HINT_AVC_DETAIL:   &str = "A-F:Velg  Esc/←:Tilbake  Enter:Bekreft";

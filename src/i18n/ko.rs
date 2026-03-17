@@ -1,3 +1,13 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * Copyright (c) 2026 okazoh04
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3.
+ * See the LICENSE file for details.
+ */
+
 // ── 하단 힌트 ─────────────────────────────────────────────────────────────────
 pub const HINT_AVC_LIST:     &str = "↑↓/jk:이동  Enter:상세  /:필터  r:새로고침  l:로그  q:종료";
 pub const HINT_AVC_DETAIL:   &str = "A-F:선택  Esc/←:뒤로  Enter:확인";

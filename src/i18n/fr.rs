@@ -1,3 +1,13 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ *
+ * Copyright (c) 2026 okazoh04
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3.
+ * See the LICENSE file for details.
+ */
+
 // ── Conseils en bas de page ───────────────────────────────────────────────────
 pub const HINT_AVC_LIST:     &str = "↑↓/jk:Déplacer  Enter:Détails  /:Filtrer  r:Actualiser  l:Journal  q:Quitter";
 pub const HINT_AVC_DETAIL:   &str = "A-F:Sélectionner  Esc/←:Retour  Enter:Confirmer";
