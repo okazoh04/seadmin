@@ -9,10 +9,10 @@ use ratatui::{
 };
 
 pub fn render(f: &mut Frame, area: Rect, app: &App, ctx: &AuthContext) {
+    let lang = &app.lang;
     let popup = centered_rect(65, 50, area);
-    render_popup_frame(f, popup, "🔒 管理者認証");
+    render_popup_frame(f, popup, lang.auth_title());
 
-    // ポップアップ内部のレイアウト
     let inner = Rect::new(
         popup.x + 1,
         popup.y + 1,
@@ -24,10 +24,10 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, ctx: &AuthContext) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(1), // 余白
-            Constraint::Length(1), // "実行コマンド："
+            Constraint::Length(1), // コマンドラベル
             Constraint::Length(2), // コマンド本文
             Constraint::Length(1), // 余白
-            Constraint::Length(1), // "パスワード："
+            Constraint::Length(1), // パスワードラベル
             Constraint::Length(1), // パスワード入力欄
             Constraint::Length(1), // 余白
             Constraint::Length(1), // エラーメッセージ
@@ -36,9 +36,9 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, ctx: &AuthContext) {
         ])
         .split(inner);
 
-    // "実行コマンド："ラベル
+    // コマンドラベル
     f.render_widget(
-        Paragraph::new(Span::raw("  実行コマンド：")),
+        Paragraph::new(Span::raw(lang.auth_cmd_label())),
         chunks[1],
     );
 
@@ -54,22 +54,16 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, ctx: &AuthContext) {
 
     // パスワードラベル
     f.render_widget(
-        Paragraph::new(Span::raw("  パスワード：")),
+        Paragraph::new(Span::raw(lang.auth_pw_label())),
         chunks[4],
     );
 
     // パスワード入力欄（マスク表示）
     let dot_count = app.password_buf.len();
     let pw_display = format!("  {}_", "•".repeat(dot_count));
-    let pw_style = if app.auth_state.is_locked() || app.auth_error.is_some() {
-        Style::default()
-            .fg(Color::Yellow)
-            .bg(Color::Rgb(26, 26, 26))
-    } else {
-        Style::default()
-            .fg(Color::Yellow)
-            .bg(Color::Rgb(26, 26, 26))
-    };
+    let pw_style = Style::default()
+        .fg(Color::Yellow)
+        .bg(Color::Rgb(26, 26, 26));
     f.render_widget(
         Paragraph::new(Line::from(Span::styled(pw_display, pw_style))),
         chunks[5],
@@ -80,7 +74,7 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, ctx: &AuthContext) {
         let secs = app.auth_state.lock_remaining_secs();
         f.render_widget(
             Paragraph::new(Line::from(Span::styled(
-                format!("  ロックアウト中（{}秒後に解除）", secs),
+                lang.lockout_msg(secs),
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             ))),
             chunks[7],
@@ -101,12 +95,12 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, ctx: &AuthContext) {
         Paragraph::new(Line::from(vec![
             Span::raw("         "),
             Span::styled(
-                "[ キャンセル（Esc） ]",
+                lang.auth_cancel_btn(),
                 Style::default().fg(Color::DarkGray),
             ),
             Span::raw("  "),
             Span::styled(
-                "[ 実行（Enter） ]",
+                lang.auth_exec_btn(),
                 Style::default()
                     .fg(Color::White)
                     .add_modifier(Modifier::BOLD),

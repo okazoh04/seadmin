@@ -1,7 +1,9 @@
 use chrono::{DateTime, Local};
 use std::fmt;
 
-/// AVC デナイアルの解決策候補
+use crate::i18n::Lang;
+
+/// アクセス拒否の解決策候補
 #[derive(Debug, Clone, PartialEq)]
 pub enum Remedy {
     PortContext,
@@ -14,16 +16,29 @@ pub enum Remedy {
 impl fmt::Display for Remedy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Remedy::PortContext => write!(f, "ポート追加"),
-            Remedy::FileContext => write!(f, "fcontext変更"),
-            Remedy::Restorecon => write!(f, "restorecon"),
-            Remedy::Boolean(b) => write!(f, "Boolean: {}", b),
-            Remedy::CustomPolicy => write!(f, "カスタムポリシー"),
+            Remedy::PortContext => write!(f, "PortContext"),
+            Remedy::FileContext => write!(f, "FileContext"),
+            Remedy::Restorecon => write!(f, "Restorecon"),
+            Remedy::Boolean(b) => write!(f, "Boolean({})", b),
+            Remedy::CustomPolicy => write!(f, "CustomPolicy"),
         }
     }
 }
 
-/// 1件の AVC デナイアル（集計済み）
+impl Remedy {
+    /// ロケール対応の表示文字列
+    pub fn display_str(&self, lang: &Lang) -> String {
+        match self {
+            Remedy::PortContext  => lang.remedy_port_context().to_string(),
+            Remedy::FileContext  => lang.remedy_file_context().to_string(),
+            Remedy::Restorecon  => lang.remedy_restorecon().to_string(),
+            Remedy::Boolean(b)  => lang.remedy_boolean(b),
+            Remedy::CustomPolicy => lang.remedy_custom_policy().to_string(),
+        }
+    }
+}
+
+/// 1件のアクセス拒否（集計済み）
 #[derive(Debug, Clone)]
 pub struct AvcEntry {
     pub id: usize,
@@ -41,18 +56,18 @@ pub struct AvcEntry {
 }
 
 impl AvcEntry {
-    /// 相対時刻の文字列表現（例: "3時間前"）
-    pub fn elapsed_str(&self) -> String {
+    /// 相対時刻の文字列表現（ロケール対応）
+    pub fn elapsed_str(&self, lang: &Lang) -> String {
         let now = Local::now();
         let secs = (now - self.last_seen).num_seconds().max(0) as u64;
         if secs < 60 {
-            format!("{}秒前", secs)
+            lang.elapsed_secs(secs)
         } else if secs < 3600 {
-            format!("{}分前", secs / 60)
+            lang.elapsed_mins(secs / 60)
         } else if secs < 86400 {
-            format!("{}時間前", secs / 3600)
+            lang.elapsed_hours(secs / 3600)
         } else {
-            format!("{}日前", secs / 86400)
+            lang.elapsed_days(secs / 86400)
         }
     }
 }

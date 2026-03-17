@@ -1,3 +1,4 @@
+mod i18n;
 mod selinux;
 mod sudo;
 mod ui;
@@ -57,7 +58,7 @@ async fn main() -> Result<()> {
     terminal.show_cursor()?;
 
     if let Err(e) = result {
-        eprintln!("エラー: {}", e);
+        eprintln!("Error: {}", e);
     }
     Ok(())
 }
@@ -146,14 +147,12 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     app.avc_entries = entries;
                     app.loading = false;
                     if app.selinux_mode == "Disabled" || app.selinux_mode == "UNKNOWN" {
-                        app.status_message = Some(
-                            "⚠ SELinux が無効です。AVC デナイアルは記録されません。".to_string(),
-                        );
+                        app.status_message = Some(app.lang.selinux_disabled().to_string());
                     } else if app.avc_entries.is_empty() {
-                        app.status_message = Some("AVC デナイアルはありません".to_string());
+                        app.status_message = Some(app.lang.no_avc().to_string());
                     } else {
                         app.status_message =
-                            Some(format!("{} 件の AVC を取得しました", app.avc_entries.len()));
+                            Some(app.lang.avc_loaded(app.avc_entries.len()));
                     }
                 }
                 AppMsg::AvcLoadError(e) => {
@@ -175,8 +174,8 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         }
                         app.auth_error = None;
                         app.auth_state.reset();
-                        app.screen_stack.truncate(1); // 常に AvcList まで戻る
-                        app.status_message = Some("操作が完了しました".to_string());
+                        app.screen_stack.truncate(1);
+                        app.status_message = Some(app.lang.op_complete().to_string());
                         // AVC を再取得
                         let tx2 = tx.clone();
                         tokio::spawn(async move {
@@ -191,28 +190,24 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             "[ERR] 認証失敗 ({}/3)",
                             app.auth_state.fail_count + 1
                         ));
-                        app.cached_password = None; // キャッシュをクリア
+                        app.cached_password = None;
                         app.auth_state.on_fail();
-                        app.auth_error = Some("パスワードが正しくありません".to_string());
+                        app.auth_error = Some(app.lang.pw_wrong().to_string());
                         *app.password_buf = String::new();
                     }
                     SudoResult::CommandFailed { stderr } => {
                         app.append_log(format!("[ERR] コマンド失敗:\n{}", stderr));
                         app.auth_state.reset();
                         app.pop_screen();
-                        app.status_message = Some(format!(
-                            "コマンド失敗: {}",
-                            stderr.lines().next().unwrap_or("")
-                        ));
+                        app.status_message = Some(
+                            app.lang.cmd_failed(stderr.lines().next().unwrap_or(""))
+                        );
                     }
                 },
                 AppMsg::EnforceMode(m) => {
                     app.append_log(format!("[INFO] SELinux モード: {}", m));
-                    // すでに AVC ロード完了済みで Disabled が判明した場合は警告を更新
                     if m == "Disabled" && !app.loading {
-                        app.status_message = Some(
-                            "⚠ SELinux が無効です。AVC デナイアルは記録されません。".to_string(),
-                        );
+                        app.status_message = Some(app.lang.selinux_disabled().to_string());
                     }
                     app.selinux_mode = m;
                 }
@@ -252,21 +247,21 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
             // コンテンツエリア
             match app.current_screen().clone() {
                 Screen::AvcList => {
-                    let hint = "↑↓/jk:移動  Enter:詳細  /:フィルタ  r:更新  l:ログ  q:終了";
+                    let hint = app.lang.hint_avc_list();
                     render_avc_list(f, chunks[1], &mut app);
                     render_footer(f, chunks[2], hint);
                 }
                 Screen::AvcDetail(id) => {
                     if let Some(entry) = app.avc_entries.iter().find(|e| e.id == id).cloned() {
-                        let opts = build_options(&entry);
-                        render_detail(f, chunks[1], &entry, detail_cursor, &opts);
-                        let hint = "A-F:対処選択  Esc/←:戻る  Enter:確認へ";
+                        let opts = build_options(&entry, &app.lang);
+                        render_detail(f, chunks[1], &entry, detail_cursor, &opts, &app.lang);
+                        let hint = app.lang.hint_avc_detail();
                         render_footer(f, chunks[2], hint);
                     }
                 }
                 Screen::PolicyReview { te, .. } => {
-                    let hint = "↑↓/jk:スクロール  Enter:適用  Esc:キャンセル";
-                    render_policy_review(f, chunks[1], &te, app.policy_review_scroll);
+                    let hint = app.lang.hint_policy_review();
+                    render_policy_review(f, chunks[1], &te, app.policy_review_scroll, &app.lang);
                     render_footer(f, chunks[2], hint);
                 }
                 Screen::Auth(ref ctx) => {
@@ -276,8 +271,8 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             if let Some(entry) =
                                 app.avc_entries.iter().find(|e| e.id == id).cloned()
                             {
-                                let opts = build_options(&entry);
-                                render_detail(f, chunks[1], &entry, detail_cursor, &opts);
+                                let opts = build_options(&entry, &app.lang);
+                                render_detail(f, chunks[1], &entry, detail_cursor, &opts, &app.lang);
                             }
                         }
                         Screen::PolicyReview { ref te, .. } => {
@@ -286,13 +281,14 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                 chunks[1],
                                 te,
                                 app.policy_review_scroll,
+                                &app.lang,
                             );
                         }
                         _ => {
                             render_avc_list(f, chunks[1], &mut app);
                         }
                     }
-                    let hint = "Enter:実行  Esc:キャンセル";
+                    let hint = app.lang.hint_auth();
                     render_footer(f, chunks[2], hint);
                     render_auth(f, size, &app, ctx);
                 }
@@ -307,7 +303,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
             // ローディング表示
             if app.loading {
                 let spinner =
-                    ratatui::widgets::Paragraph::new(" ⏳ AVC ログを読み込み中...").style(
+                    ratatui::widgets::Paragraph::new(app.lang.loading_msg()).style(
                         ratatui::style::Style::default().fg(ratatui::style::Color::Yellow),
                     );
                 f.render_widget(spinner, chunks[3]);
@@ -315,7 +311,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
             // ログオーバーレイ
             if app.show_log {
-                render_log_overlay(f, size, &app.log, app.log_scroll);
+                render_log_overlay(f, size, &app.log, app.log_scroll, &app.lang);
             }
         })?;
 
@@ -406,7 +402,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 Screen::AvcDetail(id) => {
                     let entry_clone = app.avc_entries.iter().find(|e| e.id == id).cloned();
                     if let Some(entry) = entry_clone {
-                        let opts = build_options(&entry);
+                        let opts = build_options(&entry, &app.lang);
                         let opts_len = opts.len();
                         match key.code {
                             KeyCode::Esc | KeyCode::Left => {
@@ -437,7 +433,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                         }
                                         app.pop_screen();
                                         app.status_message =
-                                            Some("無視リストに追加しました".to_string());
+                                            Some(app.lang.ignored().to_string());
                                     } else if opt.command.is_empty() {
                                         // audit2allow フロー
                                         let raw = entry.raw_lines.clone();
@@ -484,7 +480,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                         }
                                         app.pop_screen();
                                         app.status_message =
-                                            Some("無視リストに追加しました".to_string());
+                                            Some(app.lang.ignored().to_string());
                                     } else if opt.command.is_empty() {
                                         let raw = entry.raw_lines.clone();
                                         let module = format!("local_{}", entry.id);
@@ -533,8 +529,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         ];
                         app.push_screen(Screen::Auth(AuthContext {
                             command: cmd,
-                            description: "生成したポリシーモジュールをシステムに適用します。"
-                                .to_string(),
+                            description: app.lang.policy_apply_desc().to_string(),
                             prev_screen: Box::new(Screen::PolicyReview { te, pp_path }),
                         }));
                         *app.password_buf = String::new();
@@ -567,7 +562,6 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         }
                         KeyCode::Enter => {
                             let pw = app.password_buf.clone();
-                            // 認証成功を期待してキャッシュに保存（失敗時にクリア）
                             app.cached_password = Some(pw.clone());
                             *app.password_buf = String::new();
                             let cmd = ctx.command.clone();
@@ -600,7 +594,6 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         _ => {}
                     }
                 }
-
             }
         }
     }
@@ -610,14 +603,11 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
 /// 起動時の環境チェック
 fn check_env() {
-    let lang = std::env::var("LANG")
+    let lang_val = std::env::var("LANG")
         .or_else(|_| std::env::var("LC_ALL"))
         .unwrap_or_default();
-    if !lang.to_uppercase().contains("UTF") {
-        eprintln!(
-            "警告: ロケールが UTF-8 ではない可能性があります（LANG={}）。",
-            lang
-        );
-        eprintln!("日本語が正しく表示されない場合は LANG=ja_JP.UTF-8 を設定してください。");
+    if !lang_val.to_uppercase().contains("UTF") {
+        let lang = crate::i18n::detect_lang();
+        eprintln!("{}", lang.warn_locale_not_utf8(&lang_val));
     }
 }

@@ -1,3 +1,4 @@
+use crate::i18n::Lang;
 use crate::selinux::avc::AvcEntry;
 use std::collections::VecDeque;
 use std::io::Write;
@@ -95,6 +96,8 @@ pub struct App {
     pub show_log: bool,
     /// ログファイル（~/.local/share/seadmin/seadmin.log）
     pub log_file: Option<std::fs::File>,
+    /// 表示言語（起動時に LANG 環境変数から決定）
+    pub lang: Lang,
 }
 
 impl App {
@@ -118,6 +121,7 @@ impl App {
             log_scroll: 0,
             show_log: false,
             log_file: None,
+            lang: crate::i18n::detect_lang(),
         }
     }
 

@@ -8,23 +8,21 @@ use ratatui::{
 };
 
 pub fn render(f: &mut Frame, area: ratatui::layout::Rect, app: &mut App) {
+    let lang = &app.lang;
     let entries = app.filtered_avc();
     let unresolved = entries.iter().filter(|e| !e.resolved).count();
     let total = entries.len();
 
-    let title = format!(
-        " AVC デナイアル一覧  [本日]  未対処: {}件 / 全 {}件 ",
-        unresolved, total
-    );
+    let title = lang.avc_list_title(unresolved, total);
 
     let header = Row::new(vec![
         Cell::from(" # ").style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-        Cell::from("発生").style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-        Cell::from("プロセス").style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-        Cell::from("操作").style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-        Cell::from("対象").style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-        Cell::from("件数").style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-        Cell::from("解決策候補").style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+        Cell::from(lang.col_occurred()).style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+        Cell::from(lang.col_process()).style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+        Cell::from(lang.col_action()).style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+        Cell::from(lang.col_target()).style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+        Cell::from(lang.col_count()).style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+        Cell::from(lang.col_remedy()).style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
     ])
     .style(Style::default().bg(Color::Rgb(26, 26, 46)))
     .height(1);
@@ -48,12 +46,12 @@ pub fn render(f: &mut Frame, area: ratatui::layout::Rect, app: &mut App) {
 
             Row::new(vec![
                 Cell::from(format!("{}{}", prefix, e.id)),
-                Cell::from(e.elapsed_str()),
+                Cell::from(e.elapsed_str(lang)),
                 Cell::from(e.process.clone()),
                 Cell::from(e.perm.clone()),
                 Cell::from(truncate(&e.target, 24)),
                 Cell::from(e.count.to_string()),
-                Cell::from(e.remedy.to_string()),
+                Cell::from(e.remedy.display_str(lang)),
             ])
             .style(style)
             .height(1)
@@ -86,8 +84,7 @@ pub fn render(f: &mut Frame, area: ratatui::layout::Rect, app: &mut App) {
 
     // フィルタ入力中の表示
     if app.avc_filter_active || !app.avc_filter.is_empty() {
-        // 下部にフィルタバーを表示（footer が描画済みの前提で area 内下端に）
-        let filter_text = format!("/フィルタ: {}▌", app.avc_filter);
+        let filter_text = format!("{}{}▌", lang.filter_label(), app.avc_filter);
         let filter_line = Line::from(vec![Span::styled(
             filter_text,
             Style::default().fg(Color::Yellow),

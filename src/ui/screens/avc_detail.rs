@@ -1,3 +1,4 @@
+use crate::i18n::Lang;
 use crate::selinux::avc::{AvcEntry, Remedy};
 use crate::ui::app::{AuthContext, Screen};
 use ratatui::{
@@ -20,12 +21,11 @@ pub struct RemOption {
 }
 
 /// AvcEntry から対処オプション一覧を生成する
-pub fn build_options(entry: &AvcEntry) -> Vec<RemOption> {
+pub fn build_options(entry: &AvcEntry, lang: &Lang) -> Vec<RemOption> {
     let mut opts = Vec::new();
 
     match &entry.remedy {
         Remedy::PortContext => {
-            // ポート番号を target から推測（単純なケース）
             let port = entry
                 .target
                 .split(':')
@@ -36,10 +36,7 @@ pub fn build_options(entry: &AvcEntry) -> Vec<RemOption> {
             let proto = if entry.tclass.contains("udp") { "udp" } else { "tcp" };
             opts.push(RemOption {
                 key: 'A',
-                label: format!(
-                    "ポートコンテキストを追加  semanage port -a -t ssh_port_t -p {} {}",
-                    proto, port
-                ),
+                label: lang.opt_port_label(proto, &port),
                 command: vec![
                     "semanage".into(),
                     "port".into(),
@@ -50,10 +47,7 @@ pub fn build_options(entry: &AvcEntry) -> Vec<RemOption> {
                     proto.into(),
                     port,
                 ],
-                description: format!(
-                    "{} の {} ポートに ssh_port_t コンテキストを付与します。",
-                    proto, entry.target
-                ),
+                description: lang.opt_port_desc(proto, &entry.target),
                 needs_auth: true,
                 warning: false,
             });
@@ -65,15 +59,14 @@ pub fn build_options(entry: &AvcEntry) -> Vec<RemOption> {
             if has_abs_path {
                 opts.push(RemOption {
                     key: 'A',
-                    label: format!("restorecon で修復  restorecon -Rv {}", path),
+                    label: lang.opt_restorecon_label(&path),
                     command: vec!["restorecon".into(), "-Rv".into(), path.clone()],
-                    description: "デフォルトのファイルコンテキストに戻します（ラベル剥がれの修復）。".to_string(),
+                    description: lang.opt_restorecon_desc().to_string(),
                     needs_auth: true,
                     warning: false,
                 });
             }
 
-            // tcontext からファイル型を取得（例: system_u:object_r:httpd_sys_content_t:s0 → httpd_sys_content_t）
             let file_type = entry
                 .tcontext
                 .split(':')
@@ -84,10 +77,7 @@ pub fn build_options(entry: &AvcEntry) -> Vec<RemOption> {
             if has_abs_path {
                 opts.push(RemOption {
                     key: 'B',
-                    label: format!(
-                        "fcontext を変更  semanage fcontext -a -t {} {}(.*)",
-                        file_type, path
-                    ),
+                    label: lang.opt_fcontext_label(&file_type, &path),
                     command: vec![
                         "semanage".into(),
                         "fcontext".into(),
@@ -96,10 +86,7 @@ pub fn build_options(entry: &AvcEntry) -> Vec<RemOption> {
                         file_type.clone(),
                         format!("{}(.*)", path),
                     ],
-                    description: format!(
-                        "このパスに {} を付与するルールを追加します。適用後 restorecon も実行してください。",
-                        file_type
-                    ),
+                    description: lang.opt_fcontext_desc(&file_type),
                     needs_auth: true,
                     warning: false,
                 });
@@ -108,17 +95,17 @@ pub fn build_options(entry: &AvcEntry) -> Vec<RemOption> {
         Remedy::Boolean(bool_name) => {
             opts.push(RemOption {
                 key: 'A',
-                label: format!("Boolean を有効化（一時）  setsebool {} on", bool_name),
+                label: lang.opt_bool_temp_label(bool_name),
                 command: vec!["setsebool".into(), bool_name.clone(), "on".into()],
-                description: format!("{} を有効にします（再起動で元に戻ります）。", bool_name),
+                description: lang.opt_bool_temp_desc(bool_name),
                 needs_auth: true,
                 warning: false,
             });
             opts.push(RemOption {
                 key: 'B',
-                label: format!("Boolean を有効化（永続）  setsebool -P {} on", bool_name),
+                label: lang.opt_bool_perm_label(bool_name),
                 command: vec!["setsebool".into(), "-P".into(), bool_name.clone(), "on".into()],
-                description: format!("{} を永続的に有効にします。", bool_name),
+                description: lang.opt_bool_perm_desc(bool_name),
                 needs_auth: true,
                 warning: false,
             });
@@ -129,30 +116,31 @@ pub fn build_options(entry: &AvcEntry) -> Vec<RemOption> {
     // 共通オプション
     opts.push(RemOption {
         key: 'C',
-        label: "カスタムポリシーモジュールを生成・適用（audit2allow）".to_string(),
-        command: vec![], // audit2allow は別フローで処理
-        description: "audit2allow でポリシーを自動生成します。内容をレビューしてから適用できます。".to_string(),
+        label: lang.opt_custom_policy_label().to_string(),
+        command: vec![],
+        description: lang.opt_custom_policy_desc().to_string(),
         needs_auth: true,
         warning: false,
     });
+    let domain = entry.scontext.split(':').nth(2).unwrap_or("domain_t");
     opts.push(RemOption {
         key: 'D',
-        label: format!("このドメインを Permissive に設定（調査用）⚠  semanage permissive -a {}", entry.scontext.split(':').nth(2).unwrap_or("domain_t")),
+        label: lang.opt_permissive_label(domain),
         command: vec![
             "semanage".into(),
             "permissive".into(),
             "-a".into(),
-            entry.scontext.split(':').nth(2).unwrap_or("domain_t").to_string(),
+            domain.to_string(),
         ],
-        description: "拒否を一時的に無効化します。セキュリティが低下するため調査目的に限定してください。".to_string(),
+        description: lang.opt_permissive_desc().to_string(),
         needs_auth: true,
         warning: true,
     });
     opts.push(RemOption {
         key: 'F',
-        label: "何もしない / 無視リストに追加".to_string(),
+        label: lang.opt_ignore_label().to_string(),
         command: vec![],
-        description: "このエントリを無視リストに追加します（ツール内のみ）。".to_string(),
+        description: lang.opt_ignore_desc().to_string(),
         needs_auth: false,
         warning: false,
     });
@@ -160,18 +148,18 @@ pub fn build_options(entry: &AvcEntry) -> Vec<RemOption> {
     opts
 }
 
-pub fn render(f: &mut Frame, area: Rect, entry: &AvcEntry, cursor: usize, options: &[RemOption]) {
+pub fn render(f: &mut Frame, area: Rect, entry: &AvcEntry, cursor: usize, options: &[RemOption], lang: &Lang) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(6),  // 原因分析
-            Constraint::Min(8),     // 対処オプション
-            Constraint::Length(5),  // 生ログ
+            Constraint::Length(6),
+            Constraint::Min(8),
+            Constraint::Length(5),
         ])
         .split(area);
 
     // --- 原因分析ブロック ---
-    let analysis = build_analysis_text(entry);
+    let analysis = build_analysis_text(entry, lang);
     let analysis_para = Paragraph::new(
         analysis
             .iter()
@@ -180,7 +168,7 @@ pub fn render(f: &mut Frame, area: Rect, entry: &AvcEntry, cursor: usize, option
     )
     .block(
         Block::default()
-            .title(" 原因分析 ")
+            .title(lang.block_analysis())
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Rgb(100, 100, 140))),
     )
@@ -213,7 +201,7 @@ pub fn render(f: &mut Frame, area: Rect, entry: &AvcEntry, cursor: usize, option
     let mut list_state = ListState::default().with_selected(Some(cursor));
     let list = List::new(items).block(
         Block::default()
-            .title(" 対処オプション ")
+            .title(lang.block_options())
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::Rgb(100, 100, 140))),
     );
@@ -234,7 +222,7 @@ pub fn render(f: &mut Frame, area: Rect, entry: &AvcEntry, cursor: usize, option
     let raw_para = Paragraph::new(raw_text)
         .block(
             Block::default()
-                .title(" 生ログ（参照用）")
+                .title(lang.block_raw_log())
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(Color::Rgb(100, 100, 140))),
         )
@@ -242,51 +230,30 @@ pub fn render(f: &mut Frame, area: Rect, entry: &AvcEntry, cursor: usize, option
     f.render_widget(raw_para, chunks[2]);
 }
 
-fn build_analysis_text(entry: &AvcEntry) -> Vec<String> {
+fn build_analysis_text(entry: &AvcEntry, lang: &Lang) -> Vec<String> {
     let mut lines = Vec::new();
     let domain = entry.scontext.split(':').nth(2).unwrap_or(&entry.scontext);
-    lines.push(format!(
-        " {} が {} への {} を拒否されました。",
-        entry.process, entry.target, entry.perm
-    ));
+    lines.push(lang.analysis_denied(&entry.process, &entry.target, &entry.perm));
     lines.push(String::new());
     match &entry.remedy {
         crate::selinux::avc::Remedy::PortContext => {
-            lines.push(format!(
-                " ポート {} は SELinux ポリシー上で未定義です。",
-                entry.target
-            ));
-            lines.push(format!(
-                " {} を非標準ポートで動作させるにはポートコンテキストの追加が必要です。",
-                entry.process
-            ));
+            lines.push(lang.analysis_port_undefined(&entry.target));
+            lines.push(lang.analysis_port_nonstandard(&entry.process));
         }
         crate::selinux::avc::Remedy::FileContext => {
-            lines.push(format!(
-                " {} への書き込みが拒否されました。",
-                entry.target
-            ));
-            lines.push(" 非標準パスのため fcontext ルールの追加が必要です。".to_string());
+            lines.push(lang.analysis_write_denied(&entry.target));
+            lines.push(lang.analysis_fcontext_nonstandard().to_string());
         }
         crate::selinux::avc::Remedy::Restorecon => {
-            lines.push(format!(
-                " {} のラベルが剥がれている可能性があります。",
-                entry.target
-            ));
-            lines.push(" restorecon でデフォルトコンテキストに戻すことで解決できます。".to_string());
+            lines.push(lang.analysis_label_stripped(&entry.target));
+            lines.push(lang.analysis_restorecon_fix().to_string());
         }
         crate::selinux::avc::Remedy::Boolean(b) => {
-            lines.push(format!(
-                " {} Boolean を有効にすることで解決できる可能性があります。",
-                b
-            ));
+            lines.push(lang.analysis_bool_enable(b));
         }
         _ => {
-            lines.push(format!(
-                " ドメイン {} からの {} 操作がポリシーで許可されていません。",
-                domain, entry.perm
-            ));
-            lines.push(" audit2allow でカスタムポリシーを生成する必要があります。".to_string());
+            lines.push(lang.analysis_domain_denied(domain, &entry.perm));
+            lines.push(lang.analysis_custompolicy_fix().to_string());
         }
     }
     lines
@@ -296,7 +263,7 @@ fn build_analysis_text(entry: &AvcEntry) -> Vec<String> {
 pub fn select_option(entry: &AvcEntry, options: &[RemOption], cursor: usize) -> Option<AuthContext> {
     let opt = options.get(cursor)?;
     if !opt.needs_auth || opt.command.is_empty() {
-        return None; // 認証不要 or 別フロー
+        return None;
     }
     Some(AuthContext {
         command: opt.command.clone(),

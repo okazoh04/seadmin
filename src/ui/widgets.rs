@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 
+use crate::i18n::Lang;
 use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
@@ -22,7 +23,7 @@ pub fn render_header(f: &mut Frame, area: Rect, selinux_mode: &str, hostname: &s
 
     let line = Line::from(vec![
         Span::styled(
-            " seadmin v0.1 ",
+            " seadmin v0.2",
             Style::default()
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
@@ -75,13 +76,12 @@ pub fn render_popup_frame(f: &mut Frame, area: Rect, title: &str) {
 }
 
 /// ログオーバーレイを描画する（新しいエントリが上）
-pub fn render_log_overlay(f: &mut Frame, area: Rect, log: &VecDeque<String>, scroll: usize) {
+pub fn render_log_overlay(f: &mut Frame, area: Rect, log: &VecDeque<String>, scroll: usize, lang: &Lang) {
     let popup = centered_rect(92, 85, area);
     f.render_widget(Clear, popup);
 
     let inner_height = popup.height.saturating_sub(2) as usize;
     let total = log.len();
-    // 新しいものが上に来るよう逆順にし、scroll で先頭をずらす
     let lines: Vec<Line> = log
         .iter()
         .rev()
@@ -101,10 +101,7 @@ pub fn render_log_overlay(f: &mut Frame, area: Rect, log: &VecDeque<String>, scr
         })
         .collect();
 
-    let title = format!(
-        " ログ  {} 件  ↑↓:スクロール  l:閉じる ",
-        total
-    );
+    let title = lang.log_overlay_title(total);
     let para = Paragraph::new(lines).block(
         Block::default()
             .title(title)

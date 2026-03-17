@@ -1,3 +1,4 @@
+use crate::i18n::Lang;
 use ratatui::{
     layout::Rect,
     style::{Color, Style},
@@ -6,7 +7,7 @@ use ratatui::{
     Frame,
 };
 
-pub fn render(f: &mut Frame, area: Rect, te: &str, scroll: usize) {
+pub fn render(f: &mut Frame, area: Rect, te: &str, scroll: usize, lang: &Lang) {
     let lines: Vec<Line> = te
         .lines()
         .map(|l| Line::from(Span::styled(l.to_string(), Style::default().fg(Color::Rgb(144, 238, 144)))))
@@ -15,7 +16,7 @@ pub fn render(f: &mut Frame, area: Rect, te: &str, scroll: usize) {
     let para = Paragraph::new(lines)
         .block(
             Block::default()
-                .title(" ポリシー内容確認（Enter:適用  Esc:キャンセル）")
+                .title(lang.policy_review_title())
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(Color::Yellow)),
         )
