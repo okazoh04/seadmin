@@ -196,3 +196,30 @@ define_langs! {
     Vietnamese         => vi      @ ["vi"],
     English            => en      @ ["en"],
 }
+
+// ── ロケール別日時書式 ────────────────────────────────────────────────────────
+// chrono の strftime 書式文字列を返す。
+impl Lang {
+    pub fn datetime_format(&self) -> &'static str {
+        match self {
+            // 漢字圏
+            Lang::Japanese | Lang::Chinese | Lang::ChineseTraditional => "%Y年%m月%d日 %H:%M",
+            // 韓国語
+            Lang::Korean => "%Y년 %m월 %d일 %H:%M",
+            // ドット区切り (DD.MM.YYYY)
+            Lang::Russian | Lang::Kazakh | Lang::German | Lang::Norwegian => "%d.%m.%Y %H:%M",
+            // スラッシュ区切り (DD/MM/YYYY)
+            Lang::Spanish
+            | Lang::Portuguese
+            | Lang::French
+            | Lang::Italian
+            | Lang::Arabic
+            | Lang::Thai
+            | Lang::Vietnamese => "%d/%m/%Y %H:%M",
+            // ダッシュ区切り (DD-MM-YYYY)
+            Lang::Dutch => "%d-%m-%Y %H:%M",
+            // ISO 順 (YYYY-MM-DD) — Swedish・英語
+            Lang::Swedish | Lang::English => "%Y-%m-%d %H:%M",
+        }
+    }
+}

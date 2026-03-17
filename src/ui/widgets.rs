@@ -11,6 +11,7 @@
 use std::collections::VecDeque;
 
 use crate::i18n::Lang;
+use chrono::Local;
 use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
@@ -20,7 +21,7 @@ use ratatui::{
 };
 
 /// ヘッダーバーを描画する
-pub fn render_header(f: &mut Frame, area: Rect, selinux_mode: &str, hostname: &str) {
+pub fn render_header(f: &mut Frame, area: Rect, selinux_mode: &str, hostname: &str, lang: &Lang) {
     let mode_color = if selinux_mode == "Enforcing" {
         Color::Green
     } else if selinux_mode == "Permissive" {
@@ -29,7 +30,7 @@ pub fn render_header(f: &mut Frame, area: Rect, selinux_mode: &str, hostname: &s
         Color::Red
     };
 
-    let now = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
+    let now = Local::now().format(lang.datetime_format()).to_string();
 
     let line = Line::from(vec![
         Span::styled(

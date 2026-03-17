@@ -255,7 +255,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
             // 毎フレーム全画面クリア（画面遷移・Auth popup 背景などの残像を確実に除去）
             f.render_widget(ratatui::widgets::Clear, size);
 
-            render_header(f, chunks[0], &app.selinux_mode, &app.hostname);
+            render_header(f, chunks[0], &app.selinux_mode, &app.hostname, &app.lang);
 
             // コンテンツエリア
             match app.current_screen().clone() {
