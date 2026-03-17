@@ -8,9 +8,16 @@ use ratatui::{
 };
 
 pub fn render(f: &mut Frame, area: Rect, te: &str, scroll: usize, lang: &Lang) {
+    // .scroll() を使わず手動スライス — Paragraph::scroll はブロック内の
+    // 未描画セルを上書きしないため残像が発生する場合がある
+    // ratatui はタブ文字を1セル扱いするため、スペースに展開してから描画する
     let lines: Vec<Line> = te
         .lines()
-        .map(|l| Line::from(Span::styled(l.to_string(), Style::default().fg(Color::Rgb(144, 238, 144)))))
+        .skip(scroll)
+        .map(|l| {
+            let expanded = l.replace('\t', "    ");
+            Line::from(Span::styled(expanded, Style::default().fg(Color::Rgb(144, 238, 144))))
+        })
         .collect();
 
     let para = Paragraph::new(lines)
@@ -19,8 +26,7 @@ pub fn render(f: &mut Frame, area: Rect, te: &str, scroll: usize, lang: &Lang) {
                 .title(lang.policy_review_title())
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(Color::Yellow)),
-        )
-        .scroll((scroll as u16, 0));
+        );
 
     f.render_widget(para, area);
 }
