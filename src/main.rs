@@ -154,7 +154,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             e.id, e.process, e.perm, e.tclass, e.remedy, path_note
                         ));
                     }
-                    app.avc_entries = entries;
+                    app.update_avc_entries(entries);
                     app.loading = false;
                     if app.selinux_mode == "Disabled" || app.selinux_mode == "UNKNOWN" {
                         app.status_message = Some(app.lang.selinux_disabled().to_string());
@@ -173,6 +173,13 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 AppMsg::SudoResult(res) => match res {
                     SudoResult::Ok => {
                         app.append_log("[OK] コマンド成功".to_string());
+                        // 処理対象エントリを処理済みにする（screen_stack に残っている AvcDetail の id を参照）
+                        let resolved_id = app.screen_stack.iter().find_map(|s| {
+                            if let Screen::AvcDetail(id) = s { Some(*id) } else { None }
+                        });
+                        if let Some(id) = resolved_id {
+                            app.mark_resolved(id);
+                        }
                         // PolicyReview の .pp ファイルを削除
                         for s in &app.screen_stack {
                             if let Screen::PolicyReview { pp_path, .. } = s {
@@ -439,18 +446,14 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                 } else {
                                     let opt = &opts[detail_cursor];
                                     if opt.key == 'F' {
-                                        if let Some(e) =
-                                            app.avc_entries.iter_mut().find(|e| e.id == id)
-                                        {
-                                            e.resolved = true;
-                                        }
+                                        app.mark_resolved(id);
                                         app.pop_screen();
                                         app.status_message =
                                             Some(app.lang.ignored().to_string());
                                     } else if opt.command.is_empty() {
                                         // audit2allow フロー
                                         let raw = entry.raw_lines.clone();
-                                        let module = format!("local_{}", entry.id);
+                                        let module = make_module_name(&entry);
                                         app.append_log(format!("[CMD] audit2allow -M {} ({} 行のログを入力)", module, raw.len()));
                                         let tx2 = tx.clone();
                                         app.loading = true;
@@ -486,17 +489,13 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                         *app.password_buf = String::new();
                                         app.auth_error = None;
                                     } else if opt.key == 'F' {
-                                        if let Some(e) =
-                                            app.avc_entries.iter_mut().find(|e| e.id == id)
-                                        {
-                                            e.resolved = true;
-                                        }
+                                        app.mark_resolved(id);
                                         app.pop_screen();
                                         app.status_message =
                                             Some(app.lang.ignored().to_string());
                                     } else if opt.command.is_empty() {
                                         let raw = entry.raw_lines.clone();
-                                        let module = format!("local_{}", entry.id);
+                                        let module = make_module_name(&entry);
                                         let tx2 = tx.clone();
                                         app.loading = true;
                                         tokio::spawn(async move {
@@ -615,6 +614,28 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 }
 
 /// 起動時の環境チェック
+/// AVC エントリから安定したポリシーモジュール名を生成する
+///
+/// `entry.id` はリロードのたびに変わるため、エントリの内容（stype/ttype/tclass/perm）
+/// から決定論的な名前を生成する。同じ AVC には常に同じモジュール名が割り当てられるため、
+/// 重複適用しても上書きにならず、別エントリのモジュールを誤って消すことがない。
+///
+/// SELinux モジュール名は `[a-zA-Z][a-zA-Z0-9_]*` の形式が必要。
+fn make_module_name(entry: &crate::selinux::avc::AvcEntry) -> String {
+    let stype = entry.scontext.split(':').nth(2).unwrap_or("unknown");
+    let ttype = entry.tcontext.split(':').nth(2).unwrap_or("unknown");
+    // perm はスペース区切りの場合があるのでアンダースコアに変換
+    let perm = entry.perm.replace(|c: char| !c.is_ascii_alphanumeric(), "_");
+    // SELinux モジュール名の長さ制限に備えて 64 文字に切り詰める
+    let raw = format!("local_{}_{}_{}_{}",
+        stype, ttype, entry.tclass, perm);
+    if raw.len() <= 64 {
+        raw
+    } else {
+        raw[..64].to_string()
+    }
+}
+
 fn check_env() {
     let lang_val = std::env::var("LANG")
         .or_else(|_| std::env::var("LC_ALL"))

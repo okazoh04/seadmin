@@ -52,10 +52,23 @@ pub fn render(f: &mut Frame, area: ratatui::layout::Rect, app: &mut App) {
                 Style::default().fg(Color::Rgb(200, 200, 200))
             };
 
-            let prefix = if selected { "▶" } else { " " };
+            // # 列: 選択中=▶(白)  処理済=✓(緑)  未処理=空白
+            let id_cell = if selected {
+                Cell::from(Line::from(vec![
+                    Span::styled("▶", Style::default().fg(Color::White)),
+                    Span::raw(e.id.to_string()),
+                ]))
+            } else if e.resolved {
+                Cell::from(Line::from(vec![
+                    Span::styled("✓", Style::default().fg(Color::Green)),
+                    Span::raw(e.id.to_string()),
+                ]))
+            } else {
+                Cell::from(format!(" {}", e.id))
+            };
 
             Row::new(vec![
-                Cell::from(format!("{}{}", prefix, e.id)),
+                id_cell,
                 Cell::from(e.elapsed_str(lang)),
                 Cell::from(e.process.clone()),
                 Cell::from(e.perm.clone()),

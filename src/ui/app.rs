@@ -85,6 +85,9 @@ impl AuthState {
 pub struct App {
     pub screen_stack: Vec<Screen>,
     pub avc_entries: Vec<AvcEntry>,
+    /// コマンド実行済みエントリのキー集合（ausearch 再取得後も resolved 状態を維持するため）
+    /// キー形式: "scontext|tcontext|tclass|perm"
+    pub resolved_keys: std::collections::HashSet<String>,
     pub avc_cursor: usize,
     pub avc_filter: String,
     pub avc_filter_active: bool,
@@ -115,6 +118,7 @@ impl App {
         Self {
             screen_stack: vec![Screen::AvcList],
             avc_entries: Vec::new(),
+            resolved_keys: std::collections::HashSet::new(),
             avc_cursor: 0,
             avc_filter: String::new(),
             avc_filter_active: false,
@@ -196,6 +200,26 @@ impl App {
         if self.avc_cursor > 0 {
             self.avc_cursor -= 1;
         }
+    }
+
+    /// エントリを処理済みにしてキーを永続セットに登録する
+    pub fn mark_resolved(&mut self, id: usize) {
+        if let Some(e) = self.avc_entries.iter_mut().find(|e| e.id == id) {
+            e.resolved = true;
+            let key = format!("{}|{}|{}|{}", e.scontext, e.tcontext, e.tclass, e.perm);
+            self.resolved_keys.insert(key);
+        }
+    }
+
+    /// AVC エントリ一覧を更新し、resolved_keys に一致するエントリの処理済み状態を復元する
+    pub fn update_avc_entries(&mut self, mut entries: Vec<AvcEntry>) {
+        for e in &mut entries {
+            let key = format!("{}|{}|{}|{}", e.scontext, e.tcontext, e.tclass, e.perm);
+            if self.resolved_keys.contains(&key) {
+                e.resolved = true;
+            }
+        }
+        self.avc_entries = entries;
     }
 
     pub fn cursor_down(&mut self) {
