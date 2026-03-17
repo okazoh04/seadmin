@@ -1,5 +1,7 @@
 # seadmin
 
+[English](README.en.md) | 日本語 | [中文](README.zh.md)
+
 SELinux のアクセス拒否を TUI（テキストユーザーインターフェース）で確認・対処するための Rust 製管理ツール。
 
 ## 概要
