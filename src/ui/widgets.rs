@@ -34,7 +34,7 @@ pub fn render_header(f: &mut Frame, area: Rect, selinux_mode: &str, hostname: &s
 
     let line = Line::from(vec![
         Span::styled(
-            " seadmin v0.2",
+            concat!(" seadmin v", env!("CARGO_PKG_VERSION")),
             Style::default()
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
