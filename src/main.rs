@@ -644,4 +644,65 @@ fn check_env() {
         let lang = crate::i18n::detect_lang();
         eprintln!("{}", lang.warn_locale_not_utf8(&lang_val));
     }
+
+    check_deps();
+}
+
+/// コマンドが PATH 上に存在するか確認する
+fn is_in_path(cmd: &str) -> bool {
+    std::env::var_os("PATH")
+        .map(|path| {
+            std::env::split_paths(&path).any(|dir| dir.join(cmd).is_file())
+        })
+        .unwrap_or(false)
+}
+
+/// 依存コマンドの存在確認。不足があれば警告・エラーを出力し、
+/// 必須コマンドが欠けている場合はプロセスを終了する。
+fn check_deps() {
+    // (コマンド名, パッケージヒント, 必須かどうか)
+    let deps: &[(&str, &str, bool)] = &[
+        ("ausearch",    "audit / auditd",                     true),
+        ("getenforce",  "policycoreutils",                    true),
+        ("sudo",        "sudo",                               true),
+        ("audit2allow", "policycoreutils-python-utils / policycoreutils-dev", false),
+        ("semodule",    "policycoreutils",                    false),
+        ("restorecon",  "policycoreutils",                    false),
+        ("semanage",    "policycoreutils-python-utils / policycoreutils-dev", false),
+        ("setsebool",   "policycoreutils",                    false),
+    ];
+
+    let mut missing_critical: Vec<(&str, &str)> = Vec::new();
+    let mut missing_optional: Vec<(&str, &str)> = Vec::new();
+
+    for &(cmd, pkg, critical) in deps {
+        if !is_in_path(cmd) {
+            if critical {
+                missing_critical.push((cmd, pkg));
+            } else {
+                missing_optional.push((cmd, pkg));
+            }
+        }
+    }
+
+    if !missing_optional.is_empty() {
+        eprintln!("[WARN] 一部の機能に必要なコマンドが見つかりません:");
+        for (cmd, pkg) in &missing_optional {
+            eprintln!("  {:<14} (パッケージ: {})", cmd, pkg);
+        }
+        eprintln!("       上記コマンドを使う機能は動作しません。");
+        eprintln!();
+    }
+
+    if !missing_critical.is_empty() {
+        eprintln!("[ERROR] 必須コマンドが見つかりません。seadmin を起動できません:");
+        for (cmd, pkg) in &missing_critical {
+            eprintln!("  {:<14} (パッケージ: {})", cmd, pkg);
+        }
+        eprintln!();
+        eprintln!("上記パッケージをインストールしてから再実行してください。");
+        eprintln!("  例 (Fedora/RHEL): sudo dnf install audit policycoreutils");
+        eprintln!("  例 (Debian/Ubuntu): sudo apt install auditd policycoreutils");
+        std::process::exit(1);
+    }
 }
