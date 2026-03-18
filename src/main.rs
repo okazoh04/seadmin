@@ -138,6 +138,8 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
     let mut detail_cursor: usize = 0;
 
     loop {
+        app.tick = app.tick.wrapping_add(1);
+
         // バックグラウンドメッセージを処理
         while let Ok(msg) = rx.try_recv() {
             match msg {
@@ -172,7 +174,10 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 }
                 AppMsg::SudoResult(res) => match res {
                     SudoResult::Ok => {
+                        app.loading = false;
+                        app.loading_label = None;
                         app.append_log("[OK] コマンド成功".to_string());
+                        app.pending_auth_ctx = None;
                         // 処理対象エントリを処理済みにする（screen_stack に残っている AvcDetail の id を参照）
                         let resolved_id = app.screen_stack.iter().find_map(|s| {
                             if let Screen::AvcDetail(id) = s { Some(*id) } else { None }
@@ -203,6 +208,8 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         });
                     }
                     SudoResult::AuthFailed => {
+                        app.loading = false;
+                        app.loading_label = None;
                         app.append_log(format!(
                             "[ERR] 認証失敗 ({}/3)",
                             app.auth_state.fail_count + 1
@@ -211,9 +218,16 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         app.auth_state.on_fail();
                         app.auth_error = Some(app.lang.pw_wrong().to_string());
                         *app.password_buf = String::new();
+                        // キャッシュ認証でスキップしていた場合は Auth 画面を表示
+                        if let Some(ctx) = app.pending_auth_ctx.take() {
+                            app.push_screen(Screen::Auth(ctx));
+                        }
                     }
                     SudoResult::CommandFailed { stderr } => {
+                        app.loading = false;
+                        app.loading_label = None;
                         app.append_log(format!("[ERR] コマンド失敗:\n{}", stderr));
+                        app.pending_auth_ctx = None;
                         app.auth_state.reset();
                         app.pop_screen();
                         app.status_message = Some(
@@ -320,12 +334,13 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 render_status(f, chunks[3], msg, is_err);
             }
 
-            // ローディング表示
+            // ローディング表示（スピナーアニメーション）
             if app.loading {
-                let spinner =
-                    ratatui::widgets::Paragraph::new(app.lang.loading_msg()).style(
-                        ratatui::style::Style::default().fg(ratatui::style::Color::Yellow),
-                    );
+                let label = app.loading_label.as_deref();
+                let spinner_text = app.lang.loading_spinner(app.tick / 3, label);
+                let spinner = ratatui::widgets::Paragraph::new(spinner_text).style(
+                    ratatui::style::Style::default().fg(ratatui::style::Color::Yellow),
+                );
                 f.render_widget(spinner, chunks[3]);
             }
 
@@ -441,8 +456,10 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             }
                             KeyCode::Enter => {
                                 if let Some(ctx) = select_option(&entry, &opts, detail_cursor) {
-                                    app.push_screen(Screen::Auth(ctx));
-                                    app.prepare_auth();
+                                    if !try_sudo_with_cache(&mut app, ctx.clone(), &tx) {
+                                        app.push_screen(Screen::Auth(ctx));
+                                        app.prepare_auth();
+                                    }
                                 } else {
                                     let opt = &opts[detail_cursor];
                                     if opt.key == 'F' {
@@ -485,9 +502,10 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                     detail_cursor = pos;
                                     let opt = &opts[pos];
                                     if let Some(ctx) = select_option(&entry, &opts, pos) {
-                                        app.push_screen(Screen::Auth(ctx));
-                                        *app.password_buf = String::new();
-                                        app.auth_error = None;
+                                        if !try_sudo_with_cache(&mut app, ctx.clone(), &tx) {
+                                            app.push_screen(Screen::Auth(ctx));
+                                            app.prepare_auth();
+                                        }
                                     } else if opt.key == 'F' {
                                         app.mark_resolved(id);
                                         app.pop_screen();
@@ -533,19 +551,21 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         app.pop_screen();
                     }
                     KeyCode::Enter => {
-                        // semodule -i で適用 → Auth ポップアップへ
+                        // semodule -i で適用 → キャッシュがあれば直接実行、なければ Auth ポップアップへ
                         let cmd = vec![
                             "semodule".to_string(),
                             "-i".to_string(),
                             pp_path.clone(),
                         ];
-                        app.push_screen(Screen::Auth(AuthContext {
+                        let ctx = AuthContext {
                             command: cmd,
                             description: app.lang.policy_apply_desc().to_string(),
                             prev_screen: Box::new(Screen::PolicyReview { te, pp_path }),
-                        }));
-                        *app.password_buf = String::new();
-                        app.auth_error = None;
+                        };
+                        if !try_sudo_with_cache(&mut app, ctx.clone(), &tx) {
+                            app.push_screen(Screen::Auth(ctx));
+                            app.prepare_auth();
+                        }
                     }
                     KeyCode::Up | KeyCode::Char('k') => {
                         app.policy_review_scroll =
@@ -577,6 +597,8 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                             app.cached_password = Some(pw.clone());
                             *app.password_buf = String::new();
                             let cmd = ctx.command.clone();
+                            app.loading = true;
+                            app.loading_label = Some(ctx.description.clone());
                             app.append_log(format!("[CMD] sudo {}", cmd.join(" ")));
                             let tx2 = tx.clone();
                             tokio::spawn(async move {
@@ -634,6 +656,31 @@ fn make_module_name(entry: &crate::selinux::avc::AvcEntry) -> String {
     } else {
         raw[..64].to_string()
     }
+}
+
+/// キャッシュ済みパスワードがあれば Auth 画面をスキップして直接 sudo 実行する。
+/// キャッシュがあれば true（コマンド発行済み）、なければ false（呼び出し元が Auth 画面を表示すべき）を返す。
+fn try_sudo_with_cache(app: &mut App, ctx: AuthContext, tx: &mpsc::Sender<AppMsg>) -> bool {
+    let Some(cached_pw) = app.cached_password.clone() else {
+        return false;
+    };
+    let cmd = ctx.command.clone();
+    let desc = ctx.description.clone();
+    app.append_log(format!("[CMD] sudo {} (キャッシュ認証)", cmd.join(" ")));
+    app.loading = true;
+    app.loading_label = Some(desc);
+    app.pending_auth_ctx = Some(ctx);
+    let tx2 = tx.clone();
+    tokio::spawn(async move {
+        let cmd_refs: Vec<&str> = cmd.iter().map(String::as_str).collect();
+        let res = run_with_sudo(&cmd_refs, cached_pw).await;
+        let msg = match res {
+            Ok(r) => AppMsg::SudoResult(r),
+            Err(e) => AppMsg::SudoResult(SudoResult::CommandFailed { stderr: e.to_string() }),
+        };
+        let _ = tx2.send(msg).await;
+    });
+    true
 }
 
 fn check_env() {

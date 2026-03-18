@@ -98,9 +98,15 @@ pub struct App {
     pub password_buf: Zeroizing<String>,
     /// セッション内パスワードキャッシュ（認証成功後に保持、失敗時にクリア）
     pub cached_password: Option<Zeroizing<String>>,
+    /// キャッシュ認証で実行中のコンテキスト（Auth 画面をスキップした場合に保持）
+    pub pending_auth_ctx: Option<AuthContext>,
     pub auth_error: Option<String>,
     pub status_message: Option<String>,
     pub loading: bool,
+    /// ローディング中の説明ラベル（None のとき lang.loading_msg() を使用）
+    pub loading_label: Option<String>,
+    /// ループカウンタ（スピナーアニメーション用）
+    pub tick: u64,
     /// PolicyReview 画面のスクロール位置
     pub policy_review_scroll: usize,
     /// 操作ログ（最大 500 件、新しいものが末尾）
@@ -127,9 +133,12 @@ impl App {
             auth_state: AuthState::default(),
             password_buf: Zeroizing::new(String::new()),
             cached_password: None,
+            pending_auth_ctx: None,
             auth_error: None,
             status_message: None,
             loading: false,
+            loading_label: None,
+            tick: 0,
             policy_review_scroll: 0,
             log: VecDeque::new(),
             log_scroll: 0,

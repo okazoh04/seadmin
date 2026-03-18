@@ -197,6 +197,18 @@ define_langs! {
     English            => en      @ ["en"],
 }
 
+// ── ローディングスピナー ──────────────────────────────────────────────────────
+impl Lang {
+    /// tick に応じたスピナーフレームとラベルを組み合わせた文字列を返す。
+    /// label が None のときは loading_msg() を使用する。
+    pub fn loading_spinner(&self, tick: u64, label: Option<&str>) -> String {
+        const FRAMES: &[char] = &['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+        let frame = FRAMES[(tick as usize) % FRAMES.len()];
+        let text = label.unwrap_or_else(|| self.loading_msg());
+        format!("{} {}", frame, text)
+    }
+}
+
 // ── ロケール別日時書式 ────────────────────────────────────────────────────────
 // chrono の strftime 書式文字列を返す。
 impl Lang {
