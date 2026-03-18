@@ -145,3 +145,40 @@ pub fn warn_locale_not_utf8(lang_val: &str) -> String {
         lang_val
     )
 }
+
+// ── ตรวจสอบการพึ่งพา ─────────────────────────────────────────────────────────
+pub const WARN_MISSING_OPT_HDR: &str = "[WARN] ไม่พบคำสั่งที่จำเป็นบางรายการ:";
+pub const WARN_MISSING_OPT_FTR: &str = "       ฟีเจอร์ที่ใช้คำสั่งข้างต้นจะไม่ทำงาน";
+pub const ERR_MISSING_CRIT_HDR: &str = "[ERROR] ไม่พบคำสั่งที่จำเป็น ไม่สามารถเริ่ม seadmin ได้:";
+pub fn warn_missing_cmd(cmd: &str, pkg: &str) -> String {
+    format!("  {:<14} (แพ็กเกจ: {})", cmd, pkg)
+}
+pub const ERR_INSTALL_HINT: &str = "\
+กรุณาติดตั้งแพ็กเกจข้างต้นแล้วลองใหม่\n\
+  เช่น (Fedora/RHEL):   sudo dnf install audit policycoreutils\n\
+  เช่น (Debian/Ubuntu): sudo apt install auditd policycoreutils";
+
+// ── เอาต์พุตบันทึก ───────────────────────────────────────────────────────────
+pub fn log_startup(path: &str) -> String { format!("[INFO] เริ่ม seadmin แล้ว (บันทึก: {})", path) }
+pub fn log_file_open_error(err: &str) -> String { format!("[WARN] ไม่สามารถเปิดไฟล์บันทึก: {}", err) }
+pub fn log_avc_loaded_n(count: usize) -> String { format!("[INFO] โหลด AVC แล้ว: {} รายการ", count) }
+pub fn log_path_no_abs(target: &str) -> String {
+    format!("path={} (ไม่มีพาธสัมบูรณ์ — ซ่อน restorecon/fcontext)", target)
+}
+pub fn log_avc_load_error(err: &str) -> String { format!("[ERR] โหลด AVC ล้มเหลว: {}", err) }
+pub const LOG_CMD_OK: &str = "[OK] คำสั่งสำเร็จ";
+pub fn log_auth_failed(n: u32) -> String { format!("[ERR] การรับรองความถูกต้องล้มเหลว ({}/3)", n) }
+pub fn log_cmd_failed_msg(stderr: &str) -> String { format!("[ERR] คำสั่งล้มเหลว:\n{}", stderr) }
+pub fn log_selinux_mode(mode: &str) -> String { format!("[INFO] โหมด SELinux: {}", mode) }
+pub fn log_audit2allow_done(lines: usize, pp: &str) -> String {
+    format!("[INFO] สร้าง audit2allow แล้ว: {} บรรทัด, pp={}", lines, pp)
+}
+pub fn log_audit2allow_cmd(module: &str, count: usize) -> String {
+    format!("[CMD] audit2allow -M {} (ป้อน {} บรรทัดบันทึก)", module, count)
+}
+pub fn log_sudo_cached(cmd: &str) -> String { format!("[CMD] sudo {} (ใช้แคชการรับรอง)", cmd) }
+
+// ── ข้อผิดพลาดของคำสั่ง ──────────────────────────────────────────────────────
+pub const ERR_AUDIT_NO_PERM: &str =
+    "ไม่มีสิทธิ์อ่าน audit.log กรุณาเพิ่มตัวเองในกลุ่ม adm หรือตั้งค่า sudo";
+pub fn err_audit2allow_failed(stderr: &str) -> String { format!("audit2allow ล้มเหลว: {}", stderr) }

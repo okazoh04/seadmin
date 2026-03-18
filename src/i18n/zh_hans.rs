@@ -145,3 +145,40 @@ pub fn warn_locale_not_utf8(lang_val: &str) -> String {
         lang_val
     )
 }
+
+// ── 依赖检查输出 ──────────────────────────────────────────────────────────────
+pub const WARN_MISSING_OPT_HDR: &str = "[WARN] 部分功能所需的命令未找到:";
+pub const WARN_MISSING_OPT_FTR: &str = "       使用上述命令的功能将无法工作。";
+pub const ERR_MISSING_CRIT_HDR: &str = "[ERROR] 找不到必要命令，无法启动 seadmin:";
+pub fn warn_missing_cmd(cmd: &str, pkg: &str) -> String {
+    format!("  {:<14} (软件包: {})", cmd, pkg)
+}
+pub const ERR_INSTALL_HINT: &str = "\
+请安装上述软件包后重试。\n\
+  例 (Fedora/RHEL):   sudo dnf install audit policycoreutils\n\
+  例 (Debian/Ubuntu): sudo apt install auditd policycoreutils";
+
+// ── 日志输出 ──────────────────────────────────────────────────────────────────
+pub fn log_startup(path: &str) -> String { format!("[INFO] seadmin 已启动 (log: {})", path) }
+pub fn log_file_open_error(err: &str) -> String { format!("[WARN] 无法打开日志文件: {}", err) }
+pub fn log_avc_loaded_n(count: usize) -> String { format!("[INFO] AVC 已加载: {} 条", count) }
+pub fn log_path_no_abs(target: &str) -> String {
+    format!("path={} (非绝对路径 — restorecon/fcontext 已隐藏)", target)
+}
+pub fn log_avc_load_error(err: &str) -> String { format!("[ERR] AVC 加载失败: {}", err) }
+pub const LOG_CMD_OK: &str = "[OK] 命令成功";
+pub fn log_auth_failed(n: u32) -> String { format!("[ERR] 认证失败 ({}/3)", n) }
+pub fn log_cmd_failed_msg(stderr: &str) -> String { format!("[ERR] 命令失败:\n{}", stderr) }
+pub fn log_selinux_mode(mode: &str) -> String { format!("[INFO] SELinux 模式: {}", mode) }
+pub fn log_audit2allow_done(lines: usize, pp: &str) -> String {
+    format!("[INFO] audit2allow 已生成: {} 行, pp={}", lines, pp)
+}
+pub fn log_audit2allow_cmd(module: &str, count: usize) -> String {
+    format!("[CMD] audit2allow -M {} (输入 {} 行日志)", module, count)
+}
+pub fn log_sudo_cached(cmd: &str) -> String { format!("[CMD] sudo {} (缓存认证)", cmd) }
+
+// ── 命令错误 ──────────────────────────────────────────────────────────────────
+pub const ERR_AUDIT_NO_PERM: &str =
+    "没有读取 audit.log 的权限。请将自己添加到 adm 组或配置 sudo。";
+pub fn err_audit2allow_failed(stderr: &str) -> String { format!("audit2allow 失败: {}", stderr) }

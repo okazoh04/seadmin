@@ -145,3 +145,40 @@ pub fn warn_locale_not_utf8(lang_val: &str) -> String {
         lang_val
     )
 }
+
+// ── Verificación de dependencias ──────────────────────────────────────────────
+pub const WARN_MISSING_OPT_HDR: &str = "[WARN] No se encontraron algunos comandos necesarios:";
+pub const WARN_MISSING_OPT_FTR: &str = "       Las funciones que usan los comandos anteriores no funcionarán.";
+pub const ERR_MISSING_CRIT_HDR: &str = "[ERROR] Comandos requeridos no encontrados. No se puede iniciar seadmin:";
+pub fn warn_missing_cmd(cmd: &str, pkg: &str) -> String {
+    format!("  {:<14} (paquete: {})", cmd, pkg)
+}
+pub const ERR_INSTALL_HINT: &str = "\
+Instale los paquetes anteriores y vuelva a intentarlo.\n\
+  ej. (Fedora/RHEL):   sudo dnf install audit policycoreutils\n\
+  ej. (Debian/Ubuntu): sudo apt install auditd policycoreutils";
+
+// ── Salida de registro ────────────────────────────────────────────────────────
+pub fn log_startup(path: &str) -> String { format!("[INFO] seadmin iniciado (log: {})", path) }
+pub fn log_file_open_error(err: &str) -> String { format!("[WARN] No se pudo abrir el archivo de registro: {}", err) }
+pub fn log_avc_loaded_n(count: usize) -> String { format!("[INFO] AVC cargado: {} entradas", count) }
+pub fn log_path_no_abs(target: &str) -> String {
+    format!("path={} (sin ruta absoluta — restorecon/fcontext oculto)", target)
+}
+pub fn log_avc_load_error(err: &str) -> String { format!("[ERR] Error al cargar AVC: {}", err) }
+pub const LOG_CMD_OK: &str = "[OK] Comando exitoso";
+pub fn log_auth_failed(n: u32) -> String { format!("[ERR] Autenticación fallida ({}/3)", n) }
+pub fn log_cmd_failed_msg(stderr: &str) -> String { format!("[ERR] Comando fallido:\n{}", stderr) }
+pub fn log_selinux_mode(mode: &str) -> String { format!("[INFO] Modo SELinux: {}", mode) }
+pub fn log_audit2allow_done(lines: usize, pp: &str) -> String {
+    format!("[INFO] audit2allow generado: {} líneas, pp={}", lines, pp)
+}
+pub fn log_audit2allow_cmd(module: &str, count: usize) -> String {
+    format!("[CMD] audit2allow -M {} ({} líneas de registro como entrada)", module, count)
+}
+pub fn log_sudo_cached(cmd: &str) -> String { format!("[CMD] sudo {} (autenticación en caché)", cmd) }
+
+// ── Errores de comando ────────────────────────────────────────────────────────
+pub const ERR_AUDIT_NO_PERM: &str =
+    "Sin permiso para leer audit.log. Agréguese al grupo adm o configure sudo.";
+pub fn err_audit2allow_failed(stderr: &str) -> String { format!("audit2allow falló: {}", stderr) }

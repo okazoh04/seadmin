@@ -92,10 +92,10 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
     {
         Ok(f) => {
             app.log_file = Some(f);
-            app.append_log(format!("[INFO] seadmin 起動 (log: {})", log_path.display()));
+            app.append_log(app.lang.log_startup(&log_path.display().to_string()));
         }
         Err(e) => {
-            app.append_log(format!("[WARN] ログファイルを開けませんでした: {}", e));
+            app.append_log(app.lang.log_file_open_error(&e.to_string()));
         }
     }
 
@@ -144,12 +144,12 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
         while let Ok(msg) = rx.try_recv() {
             match msg {
                 AppMsg::AvcLoaded(entries) => {
-                    app.append_log(format!("[INFO] AVC ロード: {} 件", entries.len()));
+                    app.append_log(app.lang.log_avc_loaded_n(entries.len()));
                     for e in &entries {
                         let path_note = if e.target.starts_with('/') {
                             format!("path={}", e.target)
                         } else {
-                            format!("path={} (絶対パス不明 → restorecon/fcontext 非表示)", e.target)
+                            app.lang.log_path_no_abs(&e.target)
                         };
                         app.append_log(format!(
                             "[INFO]   #{} proc={} perm={} tclass={} remedy={:?} {}",
@@ -168,7 +168,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     }
                 }
                 AppMsg::AvcLoadError(e) => {
-                    app.append_log(format!("[ERR] AVC ロード失敗: {}", e));
+                    app.append_log(app.lang.log_avc_load_error(&e));
                     app.loading = false;
                     app.status_message = Some(format!("⚠ {}", e));
                 }
@@ -176,7 +176,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     SudoResult::Ok => {
                         app.loading = false;
                         app.loading_label = None;
-                        app.append_log("[OK] コマンド成功".to_string());
+                        app.append_log(app.lang.log_cmd_ok().to_string());
                         app.pending_auth_ctx = None;
                         // 処理対象エントリを処理済みにする（screen_stack に残っている AvcDetail の id を参照）
                         let resolved_id = app.screen_stack.iter().find_map(|s| {
@@ -210,10 +210,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     SudoResult::AuthFailed => {
                         app.loading = false;
                         app.loading_label = None;
-                        app.append_log(format!(
-                            "[ERR] 認証失敗 ({}/3)",
-                            app.auth_state.fail_count + 1
-                        ));
+                        app.append_log(app.lang.log_auth_failed((app.auth_state.fail_count + 1) as u32));
                         app.cached_password = None;
                         app.auth_state.on_fail();
                         app.auth_error = Some(app.lang.pw_wrong().to_string());
@@ -226,7 +223,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     SudoResult::CommandFailed { stderr } => {
                         app.loading = false;
                         app.loading_label = None;
-                        app.append_log(format!("[ERR] コマンド失敗:\n{}", stderr));
+                        app.append_log(app.lang.log_cmd_failed_msg(&stderr));
                         app.pending_auth_ctx = None;
                         app.auth_state.reset();
                         app.pop_screen();
@@ -236,7 +233,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     }
                 },
                 AppMsg::EnforceMode(m) => {
-                    app.append_log(format!("[INFO] SELinux モード: {}", m));
+                    app.append_log(app.lang.log_selinux_mode(&m));
                     if m == "Disabled" && !app.loading {
                         app.status_message = Some(app.lang.selinux_disabled().to_string());
                     }
@@ -247,10 +244,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 }
                 AppMsg::PolicyPreview { te, pp_path } => {
                     let lines = te.lines().count();
-                    app.append_log(format!(
-                        "[INFO] audit2allow 生成完了: {} 行, pp={}",
-                        lines, pp_path
-                    ));
+                    app.append_log(app.lang.log_audit2allow_done(lines, &pp_path));
                     app.loading = false;
                     app.policy_review_scroll = 0;
                     app.push_screen(Screen::PolicyReview { te, pp_path });
@@ -471,7 +465,7 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                         // audit2allow フロー
                                         let raw = entry.raw_lines.clone();
                                         let module = make_module_name(&entry);
-                                        app.append_log(format!("[CMD] audit2allow -M {} ({} 行のログを入力)", module, raw.len()));
+                                        app.append_log(app.lang.log_audit2allow_cmd(&module, raw.len()));
                                         let tx2 = tx.clone();
                                         app.loading = true;
                                         tokio::spawn(async move {
@@ -666,7 +660,7 @@ fn try_sudo_with_cache(app: &mut App, ctx: AuthContext, tx: &mpsc::Sender<AppMsg
     };
     let cmd = ctx.command.clone();
     let desc = ctx.description.clone();
-    app.append_log(format!("[CMD] sudo {} (キャッシュ認証)", cmd.join(" ")));
+    app.append_log(app.lang.log_sudo_cached(&cmd.join(" ")));
     app.loading = true;
     app.loading_label = Some(desc);
     app.pending_auth_ctx = Some(ctx);
@@ -707,6 +701,8 @@ fn is_in_path(cmd: &str) -> bool {
 /// 依存コマンドの存在確認。不足があれば警告・エラーを出力し、
 /// 必須コマンドが欠けている場合はプロセスを終了する。
 fn check_deps() {
+    let lang = crate::i18n::detect_lang();
+
     // (コマンド名, パッケージヒント, 必須かどうか)
     let deps: &[(&str, &str, bool)] = &[
         ("ausearch",    "audit / auditd",                     true),
@@ -733,23 +729,21 @@ fn check_deps() {
     }
 
     if !missing_optional.is_empty() {
-        eprintln!("[WARN] 一部の機能に必要なコマンドが見つかりません:");
+        eprintln!("{}", lang.warn_missing_opt_hdr());
         for (cmd, pkg) in &missing_optional {
-            eprintln!("  {:<14} (パッケージ: {})", cmd, pkg);
+            eprintln!("{}", lang.warn_missing_cmd(cmd, pkg));
         }
-        eprintln!("       上記コマンドを使う機能は動作しません。");
+        eprintln!("{}", lang.warn_missing_opt_ftr());
         eprintln!();
     }
 
     if !missing_critical.is_empty() {
-        eprintln!("[ERROR] 必須コマンドが見つかりません。seadmin を起動できません:");
+        eprintln!("{}", lang.err_missing_crit_hdr());
         for (cmd, pkg) in &missing_critical {
-            eprintln!("  {:<14} (パッケージ: {})", cmd, pkg);
+            eprintln!("{}", lang.warn_missing_cmd(cmd, pkg));
         }
         eprintln!();
-        eprintln!("上記パッケージをインストールしてから再実行してください。");
-        eprintln!("  例 (Fedora/RHEL): sudo dnf install audit policycoreutils");
-        eprintln!("  例 (Debian/Ubuntu): sudo apt install auditd policycoreutils");
+        eprintln!("{}", lang.err_install_hint());
         std::process::exit(1);
     }
 }

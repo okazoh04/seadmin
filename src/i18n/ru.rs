@@ -145,3 +145,40 @@ pub fn warn_locale_not_utf8(lang_val: &str) -> String {
         lang_val
     )
 }
+
+// ── Вывод проверки зависимостей ───────────────────────────────────────────────
+pub const WARN_MISSING_OPT_HDR: &str = "[WARN] Некоторые необходимые команды не найдены:";
+pub const WARN_MISSING_OPT_FTR: &str = "       Функции, использующие эти команды, не будут работать.";
+pub const ERR_MISSING_CRIT_HDR: &str = "[ERROR] Необходимые команды не найдены. Невозможно запустить seadmin:";
+pub fn warn_missing_cmd(cmd: &str, pkg: &str) -> String {
+    format!("  {:<14} (пакет: {})", cmd, pkg)
+}
+pub const ERR_INSTALL_HINT: &str = "\
+Установите указанные пакеты и повторите попытку.\n\
+  напр. (Fedora/RHEL):   sudo dnf install audit policycoreutils\n\
+  напр. (Debian/Ubuntu): sudo apt install auditd policycoreutils";
+
+// ── Вывод в журнал ────────────────────────────────────────────────────────────
+pub fn log_startup(path: &str) -> String { format!("[INFO] seadmin запущен (log: {})", path) }
+pub fn log_file_open_error(err: &str) -> String { format!("[WARN] Не удалось открыть файл журнала: {}", err) }
+pub fn log_avc_loaded_n(count: usize) -> String { format!("[INFO] AVC загружено: {} записей", count) }
+pub fn log_path_no_abs(target: &str) -> String {
+    format!("path={} (нет абсолютного пути — restorecon/fcontext скрыты)", target)
+}
+pub fn log_avc_load_error(err: &str) -> String { format!("[ERR] Ошибка загрузки AVC: {}", err) }
+pub const LOG_CMD_OK: &str = "[OK] Команда выполнена успешно";
+pub fn log_auth_failed(n: u32) -> String { format!("[ERR] Ошибка аутентификации ({}/3)", n) }
+pub fn log_cmd_failed_msg(stderr: &str) -> String { format!("[ERR] Ошибка выполнения команды:\n{}", stderr) }
+pub fn log_selinux_mode(mode: &str) -> String { format!("[INFO] Режим SELinux: {}", mode) }
+pub fn log_audit2allow_done(lines: usize, pp: &str) -> String {
+    format!("[INFO] audit2allow сгенерирован: {} строк, pp={}", lines, pp)
+}
+pub fn log_audit2allow_cmd(module: &str, count: usize) -> String {
+    format!("[CMD] audit2allow -M {} ({} строк журнала)", module, count)
+}
+pub fn log_sudo_cached(cmd: &str) -> String { format!("[CMD] sudo {} (кэш аутентификации)", cmd) }
+
+// ── Ошибки команд ─────────────────────────────────────────────────────────────
+pub const ERR_AUDIT_NO_PERM: &str =
+    "Нет прав на чтение audit.log. Добавьте себя в группу adm или настройте sudo.";
+pub fn err_audit2allow_failed(stderr: &str) -> String { format!("Ошибка audit2allow: {}", stderr) }

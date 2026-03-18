@@ -21,7 +21,7 @@ pub async fn run_with_sudo(
     password: Zeroizing<String>,
 ) -> Result<SudoResult> {
     if args.is_empty() {
-        bail!("コマンドが空です");
+        bail!("args is empty");
     }
 
     // sudo -S -- <args>  (-k を外してセッション内キャッシュを活用)

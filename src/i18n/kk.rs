@@ -145,3 +145,40 @@ pub fn warn_locale_not_utf8(lang_val: &str) -> String {
         lang_val
     )
 }
+
+// ── Тәуелділіктерді тексеру ───────────────────────────────────────────────────
+pub const WARN_MISSING_OPT_HDR: &str = "[WARN] Кейбір қажетті командалар табылмады:";
+pub const WARN_MISSING_OPT_FTR: &str = "       Жоғарыдағы командаларды пайдаланатын функциялар жұмыс істемейді.";
+pub const ERR_MISSING_CRIT_HDR: &str = "[ERROR] Қажетті командалар табылмады. seadmin іске қосылмайды:";
+pub fn warn_missing_cmd(cmd: &str, pkg: &str) -> String {
+    format!("  {:<14} (пакет: {})", cmd, pkg)
+}
+pub const ERR_INSTALL_HINT: &str = "\
+Жоғарыдағы пакеттерді орнатып, қайталап көріңіз.\n\
+  мыс. (Fedora/RHEL):   sudo dnf install audit policycoreutils\n\
+  мыс. (Debian/Ubuntu): sudo apt install auditd policycoreutils";
+
+// ── Журнал шығысы ─────────────────────────────────────────────────────────────
+pub fn log_startup(path: &str) -> String { format!("[INFO] seadmin іске қосылды (журнал: {})", path) }
+pub fn log_file_open_error(err: &str) -> String { format!("[WARN] Журнал файлы ашылмады: {}", err) }
+pub fn log_avc_loaded_n(count: usize) -> String { format!("[INFO] AVC жүктелді: {} жазба", count) }
+pub fn log_path_no_abs(target: &str) -> String {
+    format!("path={} (абсолютті жол жоқ — restorecon/fcontext жасырылды)", target)
+}
+pub fn log_avc_load_error(err: &str) -> String { format!("[ERR] AVC жүктеу қатесі: {}", err) }
+pub const LOG_CMD_OK: &str = "[OK] Команда сәтті орындалды";
+pub fn log_auth_failed(n: u32) -> String { format!("[ERR] Аутентификация сәтсіз ({}/3)", n) }
+pub fn log_cmd_failed_msg(stderr: &str) -> String { format!("[ERR] Команда сәтсіз:\n{}", stderr) }
+pub fn log_selinux_mode(mode: &str) -> String { format!("[INFO] SELinux режимі: {}", mode) }
+pub fn log_audit2allow_done(lines: usize, pp: &str) -> String {
+    format!("[INFO] audit2allow жасалды: {} жол, pp={}", lines, pp)
+}
+pub fn log_audit2allow_cmd(module: &str, count: usize) -> String {
+    format!("[CMD] audit2allow -M {} ({} журнал жолы)", module, count)
+}
+pub fn log_sudo_cached(cmd: &str) -> String { format!("[CMD] sudo {} (кэштелген аутентификация)", cmd) }
+
+// ── Команда қателері ──────────────────────────────────────────────────────────
+pub const ERR_AUDIT_NO_PERM: &str =
+    "audit.log оқуға рұқсат жоқ. adm тобына қосыңыз немесе sudo баптаңыз.";
+pub fn err_audit2allow_failed(stderr: &str) -> String { format!("audit2allow қатесі: {}", stderr) }

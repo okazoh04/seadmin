@@ -145,3 +145,40 @@ pub fn warn_locale_not_utf8(lang_val: &str) -> String {
         lang_val
     )
 }
+
+// ── 의존성 검사 출력 ──────────────────────────────────────────────────────────
+pub const WARN_MISSING_OPT_HDR: &str = "[WARN] 일부 기능에 필요한 명령을 찾을 수 없습니다:";
+pub const WARN_MISSING_OPT_FTR: &str = "       위 명령을 사용하는 기능은 작동하지 않습니다.";
+pub const ERR_MISSING_CRIT_HDR: &str = "[ERROR] 필수 명령을 찾을 수 없습니다. seadmin을 시작할 수 없습니다:";
+pub fn warn_missing_cmd(cmd: &str, pkg: &str) -> String {
+    format!("  {:<14} (패키지: {})", cmd, pkg)
+}
+pub const ERR_INSTALL_HINT: &str = "\
+위 패키지를 설치한 후 다시 실행하십시오.\n\
+  예 (Fedora/RHEL):   sudo dnf install audit policycoreutils\n\
+  예 (Debian/Ubuntu): sudo apt install auditd policycoreutils";
+
+// ── 로그 출력 ─────────────────────────────────────────────────────────────────
+pub fn log_startup(path: &str) -> String { format!("[INFO] seadmin 시작 (log: {})", path) }
+pub fn log_file_open_error(err: &str) -> String { format!("[WARN] 로그 파일을 열 수 없습니다: {}", err) }
+pub fn log_avc_loaded_n(count: usize) -> String { format!("[INFO] AVC 로드: {}개", count) }
+pub fn log_path_no_abs(target: &str) -> String {
+    format!("path={} (절대 경로 없음 — restorecon/fcontext 숨김)", target)
+}
+pub fn log_avc_load_error(err: &str) -> String { format!("[ERR] AVC 로드 실패: {}", err) }
+pub const LOG_CMD_OK: &str = "[OK] 명령 성공";
+pub fn log_auth_failed(n: u32) -> String { format!("[ERR] 인증 실패 ({}/3)", n) }
+pub fn log_cmd_failed_msg(stderr: &str) -> String { format!("[ERR] 명령 실패:\n{}", stderr) }
+pub fn log_selinux_mode(mode: &str) -> String { format!("[INFO] SELinux 모드: {}", mode) }
+pub fn log_audit2allow_done(lines: usize, pp: &str) -> String {
+    format!("[INFO] audit2allow 생성 완료: {}줄, pp={}", lines, pp)
+}
+pub fn log_audit2allow_cmd(module: &str, count: usize) -> String {
+    format!("[CMD] audit2allow -M {} ({}줄 로그 입력)", module, count)
+}
+pub fn log_sudo_cached(cmd: &str) -> String { format!("[CMD] sudo {} (캐시 인증)", cmd) }
+
+// ── 명령 오류 ─────────────────────────────────────────────────────────────────
+pub const ERR_AUDIT_NO_PERM: &str =
+    "audit.log를 읽을 권한이 없습니다. adm 그룹에 추가하거나 sudo를 설정하십시오.";
+pub fn err_audit2allow_failed(stderr: &str) -> String { format!("audit2allow 실패: {}", stderr) }

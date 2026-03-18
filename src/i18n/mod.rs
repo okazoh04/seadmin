@@ -168,6 +168,57 @@ macro_rules! define_langs {
             pub fn warn_locale_not_utf8(&self, lang_val: &str) -> String {
                 match self { $( Lang::$variant => $module::warn_locale_not_utf8(lang_val), )* }
             }
+
+            // ── check_deps 出力 ───────────────────────────────────────────────
+            pub fn warn_missing_opt_hdr(&self) -> &'static str { match self { $( Lang::$variant => $module::WARN_MISSING_OPT_HDR, )* } }
+            pub fn warn_missing_opt_ftr(&self) -> &'static str { match self { $( Lang::$variant => $module::WARN_MISSING_OPT_FTR, )* } }
+            pub fn err_missing_crit_hdr(&self) -> &'static str { match self { $( Lang::$variant => $module::ERR_MISSING_CRIT_HDR, )* } }
+            pub fn warn_missing_cmd(&self, cmd: &str, pkg: &str) -> String {
+                match self { $( Lang::$variant => $module::warn_missing_cmd(cmd, pkg), )* }
+            }
+            pub fn err_install_hint(&self) -> &'static str { match self { $( Lang::$variant => $module::ERR_INSTALL_HINT, )* } }
+
+            // ── ログ出力 ──────────────────────────────────────────────────────
+            pub fn log_startup(&self, path: &str) -> String {
+                match self { $( Lang::$variant => $module::log_startup(path), )* }
+            }
+            pub fn log_file_open_error(&self, err: &str) -> String {
+                match self { $( Lang::$variant => $module::log_file_open_error(err), )* }
+            }
+            pub fn log_avc_loaded_n(&self, count: usize) -> String {
+                match self { $( Lang::$variant => $module::log_avc_loaded_n(count), )* }
+            }
+            pub fn log_path_no_abs(&self, target: &str) -> String {
+                match self { $( Lang::$variant => $module::log_path_no_abs(target), )* }
+            }
+            pub fn log_avc_load_error(&self, err: &str) -> String {
+                match self { $( Lang::$variant => $module::log_avc_load_error(err), )* }
+            }
+            pub fn log_cmd_ok(&self) -> &'static str { match self { $( Lang::$variant => $module::LOG_CMD_OK, )* } }
+            pub fn log_auth_failed(&self, n: u32) -> String {
+                match self { $( Lang::$variant => $module::log_auth_failed(n), )* }
+            }
+            pub fn log_cmd_failed_msg(&self, stderr: &str) -> String {
+                match self { $( Lang::$variant => $module::log_cmd_failed_msg(stderr), )* }
+            }
+            pub fn log_selinux_mode(&self, mode: &str) -> String {
+                match self { $( Lang::$variant => $module::log_selinux_mode(mode), )* }
+            }
+            pub fn log_audit2allow_done(&self, lines: usize, pp: &str) -> String {
+                match self { $( Lang::$variant => $module::log_audit2allow_done(lines, pp), )* }
+            }
+            pub fn log_audit2allow_cmd(&self, module: &str, count: usize) -> String {
+                match self { $( Lang::$variant => $module::log_audit2allow_cmd(module, count), )* }
+            }
+            pub fn log_sudo_cached(&self, cmd: &str) -> String {
+                match self { $( Lang::$variant => $module::log_sudo_cached(cmd), )* }
+            }
+
+            // ── コマンドエラー ────────────────────────────────────────────────
+            pub fn err_audit_no_perm(&self) -> &'static str { match self { $( Lang::$variant => $module::ERR_AUDIT_NO_PERM, )* } }
+            pub fn err_audit2allow_failed(&self, stderr: &str) -> String {
+                match self { $( Lang::$variant => $module::err_audit2allow_failed(stderr), )* }
+            }
         }
     };
 }

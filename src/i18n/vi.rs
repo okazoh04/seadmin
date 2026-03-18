@@ -145,3 +145,40 @@ pub fn warn_locale_not_utf8(lang_val: &str) -> String {
         lang_val
     )
 }
+
+// ── Kiểm tra phụ thuộc ────────────────────────────────────────────────────────
+pub const WARN_MISSING_OPT_HDR: &str = "[WARN] Một số lệnh cần thiết không được tìm thấy:";
+pub const WARN_MISSING_OPT_FTR: &str = "       Các tính năng sử dụng các lệnh trên sẽ không hoạt động.";
+pub const ERR_MISSING_CRIT_HDR: &str = "[ERROR] Không tìm thấy các lệnh bắt buộc. Không thể khởi động seadmin:";
+pub fn warn_missing_cmd(cmd: &str, pkg: &str) -> String {
+    format!("  {:<14} (gói: {})", cmd, pkg)
+}
+pub const ERR_INSTALL_HINT: &str = "\
+Hãy cài đặt các gói trên và thử lại.\n\
+  vd. (Fedora/RHEL):   sudo dnf install audit policycoreutils\n\
+  vd. (Debian/Ubuntu): sudo apt install auditd policycoreutils";
+
+// ── Đầu ra nhật ký ────────────────────────────────────────────────────────────
+pub fn log_startup(path: &str) -> String { format!("[INFO] seadmin đã khởi động (nhật ký: {})", path) }
+pub fn log_file_open_error(err: &str) -> String { format!("[WARN] Không thể mở tệp nhật ký: {}", err) }
+pub fn log_avc_loaded_n(count: usize) -> String { format!("[INFO] Đã tải AVC: {} mục", count) }
+pub fn log_path_no_abs(target: &str) -> String {
+    format!("path={} (không có đường dẫn tuyệt đối — ẩn restorecon/fcontext)", target)
+}
+pub fn log_avc_load_error(err: &str) -> String { format!("[ERR] Tải AVC thất bại: {}", err) }
+pub const LOG_CMD_OK: &str = "[OK] Lệnh thành công";
+pub fn log_auth_failed(n: u32) -> String { format!("[ERR] Xác thực thất bại ({}/3)", n) }
+pub fn log_cmd_failed_msg(stderr: &str) -> String { format!("[ERR] Lệnh thất bại:\n{}", stderr) }
+pub fn log_selinux_mode(mode: &str) -> String { format!("[INFO] Chế độ SELinux: {}", mode) }
+pub fn log_audit2allow_done(lines: usize, pp: &str) -> String {
+    format!("[INFO] audit2allow đã tạo: {} dòng, pp={}", lines, pp)
+}
+pub fn log_audit2allow_cmd(module: &str, count: usize) -> String {
+    format!("[CMD] audit2allow -M {} ({} dòng nhật ký làm đầu vào)", module, count)
+}
+pub fn log_sudo_cached(cmd: &str) -> String { format!("[CMD] sudo {} (xác thực đã lưu cache)", cmd) }
+
+// ── Lỗi lệnh ──────────────────────────────────────────────────────────────────
+pub const ERR_AUDIT_NO_PERM: &str =
+    "Không có quyền đọc audit.log. Thêm bản thân vào nhóm adm hoặc cấu hình sudo.";
+pub fn err_audit2allow_failed(stderr: &str) -> String { format!("audit2allow thất bại: {}", stderr) }

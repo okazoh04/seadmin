@@ -145,3 +145,40 @@ pub fn warn_locale_not_utf8(lang_val: &str) -> String {
         lang_val
     )
 }
+
+// ── Beroendekontrollen ────────────────────────────────────────────────────────
+pub const WARN_MISSING_OPT_HDR: &str = "[WARN] Vissa nödvändiga kommandon hittades inte:";
+pub const WARN_MISSING_OPT_FTR: &str = "       Funktioner som använder ovanstående kommandon fungerar inte.";
+pub const ERR_MISSING_CRIT_HDR: &str = "[ERROR] Nödvändiga kommandon hittades inte. Kan inte starta seadmin:";
+pub fn warn_missing_cmd(cmd: &str, pkg: &str) -> String {
+    format!("  {:<14} (paket: {})", cmd, pkg)
+}
+pub const ERR_INSTALL_HINT: &str = "\
+Installera ovanstående paket och försök igen.\n\
+  t.ex. (Fedora/RHEL):   sudo dnf install audit policycoreutils\n\
+  t.ex. (Debian/Ubuntu): sudo apt install auditd policycoreutils";
+
+// ── Loggutdata ────────────────────────────────────────────────────────────────
+pub fn log_startup(path: &str) -> String { format!("[INFO] seadmin startad (logg: {})", path) }
+pub fn log_file_open_error(err: &str) -> String { format!("[WARN] Det gick inte att öppna loggfilen: {}", err) }
+pub fn log_avc_loaded_n(count: usize) -> String { format!("[INFO] AVC inläst: {} poster", count) }
+pub fn log_path_no_abs(target: &str) -> String {
+    format!("path={} (ingen absolut sökväg — restorecon/fcontext dold)", target)
+}
+pub fn log_avc_load_error(err: &str) -> String { format!("[ERR] AVC-inläsning misslyckades: {}", err) }
+pub const LOG_CMD_OK: &str = "[OK] Kommando lyckades";
+pub fn log_auth_failed(n: u32) -> String { format!("[ERR] Autentisering misslyckades ({}/3)", n) }
+pub fn log_cmd_failed_msg(stderr: &str) -> String { format!("[ERR] Kommando misslyckades:\n{}", stderr) }
+pub fn log_selinux_mode(mode: &str) -> String { format!("[INFO] SELinux-läge: {}", mode) }
+pub fn log_audit2allow_done(lines: usize, pp: &str) -> String {
+    format!("[INFO] audit2allow genererad: {} rader, pp={}", lines, pp)
+}
+pub fn log_audit2allow_cmd(module: &str, count: usize) -> String {
+    format!("[CMD] audit2allow -M {} ({} loggrader som inmatning)", module, count)
+}
+pub fn log_sudo_cached(cmd: &str) -> String { format!("[CMD] sudo {} (cachad autentisering)", cmd) }
+
+// ── Kommandofel ───────────────────────────────────────────────────────────────
+pub const ERR_AUDIT_NO_PERM: &str =
+    "Ingen behörighet att läsa audit.log. Lägg till dig i adm-gruppen eller konfigurera sudo.";
+pub fn err_audit2allow_failed(stderr: &str) -> String { format!("audit2allow misslyckades: {}", stderr) }

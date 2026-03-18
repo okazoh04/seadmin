@@ -145,3 +145,58 @@ pub fn warn_locale_not_utf8(lang_val: &str) -> String {
         lang_val
     )
 }
+
+// ── check_deps 出力 ───────────────────────────────────────────────────────────
+pub const WARN_MISSING_OPT_HDR: &str = "[WARN] 一部の機能に必要なコマンドが見つかりません:";
+pub const WARN_MISSING_OPT_FTR: &str = "       上記コマンドを使う機能は動作しません。";
+pub const ERR_MISSING_CRIT_HDR: &str = "[ERROR] 必須コマンドが見つかりません。seadmin を起動できません:";
+pub fn warn_missing_cmd(cmd: &str, pkg: &str) -> String {
+    format!("  {:<14} (パッケージ: {})", cmd, pkg)
+}
+pub const ERR_INSTALL_HINT: &str = "\
+上記パッケージをインストールしてから再実行してください。\n\
+  例 (Fedora/RHEL):   sudo dnf install audit policycoreutils\n\
+  例 (Debian/Ubuntu): sudo apt install auditd policycoreutils";
+
+// ── ログ出力 ──────────────────────────────────────────────────────────────────
+pub fn log_startup(path: &str) -> String {
+    format!("[INFO] seadmin 起動 (log: {})", path)
+}
+pub fn log_file_open_error(err: &str) -> String {
+    format!("[WARN] ログファイルを開けませんでした: {}", err)
+}
+pub fn log_avc_loaded_n(count: usize) -> String {
+    format!("[INFO] AVC ロード: {} 件", count)
+}
+pub fn log_path_no_abs(target: &str) -> String {
+    format!("path={} (絶対パス不明 → restorecon/fcontext 非表示)", target)
+}
+pub fn log_avc_load_error(err: &str) -> String {
+    format!("[ERR] AVC ロード失敗: {}", err)
+}
+pub const LOG_CMD_OK: &str = "[OK] コマンド成功";
+pub fn log_auth_failed(n: u32) -> String {
+    format!("[ERR] 認証失敗 ({}/3)", n)
+}
+pub fn log_cmd_failed_msg(stderr: &str) -> String {
+    format!("[ERR] コマンド失敗:\n{}", stderr)
+}
+pub fn log_selinux_mode(mode: &str) -> String {
+    format!("[INFO] SELinux モード: {}", mode)
+}
+pub fn log_audit2allow_done(lines: usize, pp: &str) -> String {
+    format!("[INFO] audit2allow 生成完了: {} 行, pp={}", lines, pp)
+}
+pub fn log_audit2allow_cmd(module: &str, count: usize) -> String {
+    format!("[CMD] audit2allow -M {} ({} 行のログを入力)", module, count)
+}
+pub fn log_sudo_cached(cmd: &str) -> String {
+    format!("[CMD] sudo {} (キャッシュ認証)", cmd)
+}
+
+// ── コマンドエラー ────────────────────────────────────────────────────────────
+pub const ERR_AUDIT_NO_PERM: &str =
+    "audit.log を読む権限がありません。adm グループへの追加か sudo 設定を確認してください。";
+pub fn err_audit2allow_failed(stderr: &str) -> String {
+    format!("audit2allow 失敗: {}", stderr)
+}

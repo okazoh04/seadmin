@@ -145,3 +145,40 @@ pub fn warn_locale_not_utf8(lang_val: &str) -> String {
         lang_val
     )
 }
+
+// ── Afhankelijkheidscontrole ───────────────────────────────────────────────────
+pub const WARN_MISSING_OPT_HDR: &str = "[WARN] Sommige vereiste opdrachten zijn niet gevonden:";
+pub const WARN_MISSING_OPT_FTR: &str = "       Functies die de bovenstaande opdrachten gebruiken, werken niet.";
+pub const ERR_MISSING_CRIT_HDR: &str = "[ERROR] Vereiste opdrachten niet gevonden. Kan seadmin niet starten:";
+pub fn warn_missing_cmd(cmd: &str, pkg: &str) -> String {
+    format!("  {:<14} (pakket: {})", cmd, pkg)
+}
+pub const ERR_INSTALL_HINT: &str = "\
+Installeer de bovenstaande pakketten en probeer opnieuw.\n\
+  bijv. (Fedora/RHEL):   sudo dnf install audit policycoreutils\n\
+  bijv. (Debian/Ubuntu): sudo apt install auditd policycoreutils";
+
+// ── Loguitvoer ────────────────────────────────────────────────────────────────
+pub fn log_startup(path: &str) -> String { format!("[INFO] seadmin gestart (log: {})", path) }
+pub fn log_file_open_error(err: &str) -> String { format!("[WARN] Logbestand kon niet worden geopend: {}", err) }
+pub fn log_avc_loaded_n(count: usize) -> String { format!("[INFO] AVC geladen: {} vermeldingen", count) }
+pub fn log_path_no_abs(target: &str) -> String {
+    format!("path={} (geen absoluut pad — restorecon/fcontext verborgen)", target)
+}
+pub fn log_avc_load_error(err: &str) -> String { format!("[ERR] AVC laden mislukt: {}", err) }
+pub const LOG_CMD_OK: &str = "[OK] Opdracht geslaagd";
+pub fn log_auth_failed(n: u32) -> String { format!("[ERR] Verificatie mislukt ({}/3)", n) }
+pub fn log_cmd_failed_msg(stderr: &str) -> String { format!("[ERR] Opdracht mislukt:\n{}", stderr) }
+pub fn log_selinux_mode(mode: &str) -> String { format!("[INFO] SELinux-modus: {}", mode) }
+pub fn log_audit2allow_done(lines: usize, pp: &str) -> String {
+    format!("[INFO] audit2allow gegenereerd: {} regels, pp={}", lines, pp)
+}
+pub fn log_audit2allow_cmd(module: &str, count: usize) -> String {
+    format!("[CMD] audit2allow -M {} ({} logregels als invoer)", module, count)
+}
+pub fn log_sudo_cached(cmd: &str) -> String { format!("[CMD] sudo {} (gecachede verificatie)", cmd) }
+
+// ── Opdrachtfouten ────────────────────────────────────────────────────────────
+pub const ERR_AUDIT_NO_PERM: &str =
+    "Geen toestemming om audit.log te lezen. Voeg uzelf toe aan de adm-groep of configureer sudo.";
+pub fn err_audit2allow_failed(stderr: &str) -> String { format!("audit2allow mislukt: {}", stderr) }

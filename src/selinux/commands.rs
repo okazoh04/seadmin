@@ -25,6 +25,7 @@ pub async fn ausearch_avc() -> Result<String> {
         Ok(o) => {
             let stderr = String::from_utf8_lossy(&o.stderr);
             // 権限エラー以外は stdout を返す（<no matches> も正常応答）
+            // OS が出力する "Permission denied" / "許可がありません" の両方を検出する
             if !stderr.contains("許可がありません") && !stderr.contains("Permission denied") {
                 return Ok(String::from_utf8_lossy(&o.stdout).to_string());
             }
@@ -40,10 +41,10 @@ pub async fn ausearch_avc() -> Result<String> {
         .await?;
 
     let stderr = String::from_utf8_lossy(&out.stderr);
+    // sudo が "password is required" / "パスワード" を含む場合は権限不足と判定
     if stderr.contains("password is required") || stderr.contains("パスワード") {
-        Err(anyhow::anyhow!(
-            "audit.log を読む権限がありません。adm グループへの追加か sudo 設定を確認してください。"
-        ))
+        let lang = crate::i18n::detect_lang();
+        Err(anyhow::anyhow!("{}", lang.err_audit_no_perm()))
     } else {
         Ok(String::from_utf8_lossy(&out.stdout).to_string())
     }
@@ -82,9 +83,10 @@ pub async fn audit2allow_generate(avc_lines: &[String], module_name: &str) -> Re
     }
     let output = child.wait_with_output().await?;
     if !output.status.success() {
+        let lang = crate::i18n::detect_lang();
         return Err(anyhow::anyhow!(
-            "audit2allow 失敗: {}",
-            String::from_utf8_lossy(&output.stderr)
+            "{}",
+            lang.err_audit2allow_failed(&String::from_utf8_lossy(&output.stderr))
         ));
     }
 
