@@ -152,6 +152,8 @@ pub fn elapsed_hours(n: u64) -> String { format!("{}小时前", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("{}天前", n) }
 pub const LABEL_FIRST_SEEN: &str = "首次发生";
 pub const LABEL_LAST_SEEN:  &str = "最后发生";
+pub const LABEL_SYSCALL:    &str = "Syscall";
+pub const LABEL_ERRNO:      &str = "errno";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "警告: 区域设置可能不是 UTF-8 (LANG={})。\n\

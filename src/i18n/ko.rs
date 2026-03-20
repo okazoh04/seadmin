@@ -152,6 +152,8 @@ pub fn elapsed_hours(n: u64) -> String { format!("{}시간 전", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("{}일 전", n) }
 pub const LABEL_FIRST_SEEN: &str = "최초 발생";
 pub const LABEL_LAST_SEEN:  &str = "최종 발생";
+pub const LABEL_SYSCALL:    &str = "Syscall";
+pub const LABEL_ERRNO:      &str = "errno";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "경고: 로케일이 UTF-8이 아닐 수 있습니다 (LANG={}).\n\

@@ -152,6 +152,8 @@ pub fn elapsed_hours(n: u64) -> String { format!("för {}h sedan", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("för {}d sedan", n) }
 pub const LABEL_FIRST_SEEN: &str = "Första förekomst";
 pub const LABEL_LAST_SEEN:  &str = "Senaste förekomst";
+pub const LABEL_SYSCALL:    &str = "Syscall";
+pub const LABEL_ERRNO:      &str = "errno";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "Varning: Locale kanske inte är UTF-8 (LANG={}).\n\

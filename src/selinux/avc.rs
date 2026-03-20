@@ -87,6 +87,10 @@ pub struct AvcEntry {
     pub resolved: bool,
     /// Boolean remedy 時の sepolicy 説明文（非同期で補完）
     pub bool_description: Option<String>,
+    /// SYSCALL レコードから変換したシステムコール名（例: "openat"）
+    pub syscall_name: Option<String>,
+    /// SYSCALL レコードの exit 値から変換した errno 名（例: "EACCES"）
+    pub errno_name: Option<String>,
 }
 
 impl AvcEntry {
@@ -233,6 +237,20 @@ fn parse_block(
 
     let remedy = diagnose_remedy(&perm, &tclass, &scontext, &tcontext, &target);
 
+    // SYSCALL レコードから syscall 番号と exit コードを抽出して名前変換
+    let syscall_line = block.lines().find(|l| l.contains("type=SYSCALL"));
+    let syscall_name = syscall_line
+        .and_then(|l| extract_field(l, "syscall="))
+        .and_then(|s| s.parse::<u32>().ok())
+        .and_then(syscall_name_from_nr)
+        .map(str::to_string);
+    let errno_name = syscall_line
+        .and_then(|l| extract_field(l, "exit="))
+        .and_then(|s| s.parse::<i32>().ok())
+        .filter(|&n| n < 0)
+        .and_then(|n| errno_name_from_code((-n) as u32))
+        .map(str::to_string);
+
     Some(AvcEntry {
         id,
         first_seen: ts,
@@ -248,6 +266,8 @@ fn parse_block(
         remedy,
         resolved: false,
         bool_description: None,
+        syscall_name,
+        errno_name,
     })
 }
 
@@ -438,6 +458,74 @@ pub fn diagnose_remedy(
     }
 
     Remedy::CustomPolicy
+}
+
+/// x86_64 システムコール番号をシンボル名に変換する
+fn syscall_name_from_nr(nr: u32) -> Option<&'static str> {
+    Some(match nr {
+        0   => "read",          1   => "write",         2   => "open",
+        3   => "close",         4   => "stat",          5   => "fstat",
+        6   => "lstat",         7   => "poll",          8   => "lseek",
+        9   => "mmap",          10  => "mprotect",      11  => "munmap",
+        12  => "brk",           16  => "ioctl",         17  => "pread64",
+        18  => "pwrite64",      19  => "readv",         20  => "writev",
+        21  => "access",        22  => "pipe",          23  => "select",
+        32  => "dup",           33  => "dup2",          39  => "getpid",
+        40  => "sendfile",      41  => "socket",        42  => "connect",
+        43  => "accept",        44  => "sendto",        45  => "recvfrom",
+        46  => "sendmsg",       47  => "recvmsg",       48  => "shutdown",
+        49  => "bind",          50  => "listen",        51  => "getsockname",
+        52  => "getpeername",   53  => "socketpair",    54  => "setsockopt",
+        55  => "getsockopt",    56  => "clone",         57  => "fork",
+        58  => "vfork",         59  => "execve",        60  => "exit",
+        61  => "wait4",         62  => "kill",          63  => "uname",
+        72  => "fcntl",         74  => "fsync",         75  => "fdatasync",
+        76  => "truncate",      77  => "ftruncate",     78  => "getdents",
+        79  => "getcwd",        80  => "chdir",         81  => "fchdir",
+        82  => "rename",        83  => "mkdir",         84  => "rmdir",
+        85  => "creat",         86  => "link",          87  => "unlink",
+        88  => "symlink",       89  => "readlink",      90  => "chmod",
+        91  => "fchmod",        92  => "chown",         93  => "fchown",
+        94  => "lchown",        95  => "umask",         97  => "getrlimit",
+        101 => "ptrace",        102 => "getuid",        105 => "setuid",
+        106 => "setgid",        107 => "geteuid",       108 => "getegid",
+        133 => "mknod",         157 => "prctl",         186 => "gettid",
+        217 => "getdents64",    232 => "exit_group",    233 => "epoll_wait",
+        234 => "epoll_ctl",     257 => "openat",        258 => "mkdirat",
+        259 => "mknodat",       260 => "fchownat",      261 => "futimesat",
+        262 => "newfstatat",    263 => "unlinkat",      264 => "renameat",
+        265 => "linkat",        266 => "symlinkat",     267 => "readlinkat",
+        268 => "fchmodat",      269 => "faccessat",     280 => "utimensat",
+        281 => "epoll_pwait",   285 => "fallocate",     288 => "accept4",
+        291 => "epoll_create1", 292 => "dup3",          293 => "pipe2",
+        316 => "renameat2",     318 => "getrandom",     319 => "memfd_create",
+        322 => "execveat",      332 => "statx",         435 => "clone3",
+        437 => "openat2",       439 => "faccessat2",
+        _   => return None,
+    })
+}
+
+/// Linux errno 番号をシンボル名に変換する（負の exit 値の絶対値を渡す）
+fn errno_name_from_code(code: u32) -> Option<&'static str> {
+    Some(match code {
+        1   => "EPERM",         2   => "ENOENT",        3   => "ESRCH",
+        4   => "EINTR",         5   => "EIO",           6   => "ENXIO",
+        7   => "E2BIG",         8   => "ENOEXEC",       9   => "EBADF",
+        10  => "ECHILD",        11  => "EAGAIN",        12  => "ENOMEM",
+        13  => "EACCES",        14  => "EFAULT",        16  => "EBUSY",
+        17  => "EEXIST",        18  => "EXDEV",         19  => "ENODEV",
+        20  => "ENOTDIR",       21  => "EISDIR",        22  => "EINVAL",
+        23  => "ENFILE",        24  => "EMFILE",        25  => "ENOTTY",
+        26  => "ETXTBSY",       28  => "ENOSPC",        29  => "ESPIPE",
+        30  => "EROFS",         32  => "EPIPE",         33  => "EDOM",
+        34  => "ERANGE",        35  => "EDEADLK",       36  => "ENAMETOOLONG",
+        38  => "ENOSYS",        39  => "ENOTEMPTY",     40  => "ELOOP",
+        95  => "EOPNOTSUPP",    97  => "EAFNOSUPPORT",  98  => "EADDRINUSE",
+        99  => "EADDRNOTAVAIL", 101 => "ENETUNREACH",   104 => "ECONNRESET",
+        107 => "ENOTCONN",      110 => "ETIMEDOUT",     111 => "ECONNREFUSED",
+        113 => "EHOSTUNREACH",  115 => "EINPROGRESS",
+        _   => return None,
+    })
 }
 
 /// SELinux の型が「汎用型・仮ラベル」かどうかを判定する

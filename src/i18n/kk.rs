@@ -152,6 +152,8 @@ pub fn elapsed_hours(n: u64) -> String { format!("{} сағ бұрын", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("{} күн бұрын", n) }
 pub const LABEL_FIRST_SEEN: &str = "Алғаш пайда болу";
 pub const LABEL_LAST_SEEN:  &str = "Соңғы пайда болу";
+pub const LABEL_SYSCALL:    &str = "Syscall";
+pub const LABEL_ERRNO:      &str = "errno";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "Ескерту: локаль UTF-8 болмауы мүмкін (LANG={}).\n\

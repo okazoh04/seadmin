@@ -256,6 +256,17 @@ fn build_analysis_text(entry: &AvcEntry, lang: &Lang) -> Vec<String> {
     let mut lines = Vec::new();
     let domain = entry.scontext.split(':').nth(2).unwrap_or(&entry.scontext);
     lines.push(lang.analysis_denied(&entry.process, &entry.target, &entry.perm));
+    // syscall / errno（SYSCALL レコードがある場合のみ表示）
+    if entry.syscall_name.is_some() || entry.errno_name.is_some() {
+        let mut parts = Vec::new();
+        if let Some(sc) = &entry.syscall_name {
+            parts.push(format!("{}: {}", lang.label_syscall(), sc));
+        }
+        if let Some(en) = &entry.errno_name {
+            parts.push(format!("{}: {}", lang.label_errno(), en));
+        }
+        lines.push(format!(" {}", parts.join("  ")));
+    }
     // first_seen / last_seen（複数回発生している場合のみ両方表示）
     if entry.count > 1 {
         let fmt = lang.datetime_format();

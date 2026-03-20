@@ -152,6 +152,8 @@ pub fn elapsed_hours(n: u64) -> String { format!("منذ {}س", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("منذ {}ي", n) }
 pub const LABEL_FIRST_SEEN: &str = "أول ظهور";
 pub const LABEL_LAST_SEEN:  &str = "آخر ظهور";
+pub const LABEL_SYSCALL:    &str = "Syscall";
+pub const LABEL_ERRNO:      &str = "errno";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "تحذير: قد لا يكون الإعداد المحلي UTF-8 (LANG={}).\n\

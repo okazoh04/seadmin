@@ -152,6 +152,8 @@ pub fn elapsed_hours(n: u64) -> String { format!("il y a {}h", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("il y a {}j", n) }
 pub const LABEL_FIRST_SEEN: &str = "Première occurrence";
 pub const LABEL_LAST_SEEN:  &str = "Dernière occurrence";
+pub const LABEL_SYSCALL:    &str = "Syscall";
+pub const LABEL_ERRNO:      &str = "errno";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "Avertissement: La locale n'est peut-être pas UTF-8 (LANG={}).\n\

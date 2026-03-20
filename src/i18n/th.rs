@@ -152,6 +152,8 @@ pub fn elapsed_hours(n: u64) -> String { format!("{} ชั่วโมงที
 pub fn elapsed_days(n: u64)  -> String { format!("{} วันที่แล้ว", n) }
 pub const LABEL_FIRST_SEEN: &str = "ครั้งแรก";
 pub const LABEL_LAST_SEEN:  &str = "ครั้งล่าสุด";
+pub const LABEL_SYSCALL:    &str = "Syscall";
+pub const LABEL_ERRNO:      &str = "errno";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "คำเตือน: locale อาจไม่ใช่ UTF-8 (LANG={})\n\

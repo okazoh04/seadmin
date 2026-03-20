@@ -179,6 +179,8 @@ macro_rules! define_langs {
             pub fn elapsed_days(&self, n: u64)  -> String { match self { $( Lang::$variant => $module::elapsed_days(n), )* } }
             pub fn label_first_seen(&self) -> &'static str { match self { $( Lang::$variant => $module::LABEL_FIRST_SEEN, )* } }
             pub fn label_last_seen(&self)  -> &'static str { match self { $( Lang::$variant => $module::LABEL_LAST_SEEN, )* } }
+            pub fn label_syscall(&self)    -> &'static str { match self { $( Lang::$variant => $module::LABEL_SYSCALL, )* } }
+            pub fn label_errno(&self)      -> &'static str { match self { $( Lang::$variant => $module::LABEL_ERRNO, )* } }
             pub fn warn_locale_not_utf8(&self, lang_val: &str) -> String {
                 match self { $( Lang::$variant => $module::warn_locale_not_utf8(lang_val), )* }
             }
