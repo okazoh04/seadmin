@@ -558,3 +558,51 @@ fn is_generic_type(ttype: &str) -> bool {
 
     GENERIC_TYPES.contains(&ttype)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_try_decode_hex() {
+        // "/usr/bin/screen" の 16進表現
+        assert_eq!(try_decode_hex("2F7573722F62696E2F73637265656E"), Some("/usr/bin/screen".to_string()));
+        assert_eq!(try_decode_hex("nothex"), None);
+        assert_eq!(try_decode_hex("123"), None); // 奇数長
+    }
+
+    #[test]
+    fn test_parse_block_simple() {
+        let block = r#"type=AVC msg=audit(1710000000.123:456): avc:  denied  { read } for  pid=1234 comm="nginx" path="/var/www/html/index.html" dev="sda1" ino=789 scontext=system_u:system_r:httpd_t:s0 tcontext=system_u:object_r:default_t:s0 tclass=file permissive=0
+type=SYSCALL msg=audit(1710000000.123:456): arch=c000003e syscall=2 success=no exit=-13 ppid=1 p1=0 p2=0 p3=0 p4=0 items=0 ppid=1 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="nginx" exe="/usr/sbin/nginx" subj=system_u:system_r:httpd_t:s0 key=(null)"#;
+        let path_map = std::collections::HashMap::new();
+        let entry = parse_block(block, 1, &path_map).unwrap();
+
+        assert_eq!(entry.process, "nginx");
+        assert_eq!(entry.perm, "read");
+        assert_eq!(entry.target, "/var/www/html/index.html");
+        assert_eq!(entry.tclass, "file");
+        assert_eq!(entry.syscall_name, Some("open".to_string()));
+        assert_eq!(entry.errno_name, Some("EACCES".to_string()));
+        assert_eq!(entry.remedy, Remedy::FileContext);
+    }
+
+    #[test]
+    fn test_diagnose_remedy() {
+        // PortContext
+        assert_eq!(
+            diagnose_remedy("name_bind", "tcp_socket", "s:r:httpd_t:s0", "s:r:http_port_t:s0", ""),
+            Remedy::PortContext
+        );
+        // Restorecon (unlabeled)
+        assert_eq!(
+            diagnose_remedy("read", "file", "s:r:httpd_t:s0", "s:r:unlabeled_t:s0", "/path"),
+            Remedy::Restorecon
+        );
+        // CustomPolicy (Fallback)
+        assert_eq!(
+            diagnose_remedy("getattr", "process", "s:r:httpd_t:s0", "s:r:kernel_t:s0", ""),
+            Remedy::CustomPolicy
+        );
+    }
+}

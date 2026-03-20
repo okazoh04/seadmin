@@ -141,23 +141,61 @@ fn parse_audit2why_output(text: &str) -> Option<(String, String)> {
     None
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_audit2why_boolean() {
+        let output = "Was caused by:\n  The httpd_can_network_connect boolean was set incorrectly.\n  Description:\n  Allow httpd to can network connect";
+        let res = parse_audit2why_output(output);
+        assert_eq!(res, Some(("BOOLEAN".to_string(), "httpd_can_network_connect".to_string())));
+
+        let output_alt = "Was caused by:\n  you must turn on the ftp_home_dir boolean to allow this access.";
+        let res_alt = parse_audit2why_output(output_alt);
+        assert_eq!(res_alt, Some(("BOOLEAN".to_string(), "ftp_home_dir".to_string())));
+    }
+
+    #[test]
+    fn test_parse_audit2why_terule() {
+        let output = "Was caused by:\n  Missing type enforcement (TE) allow rule.\n\n  You can generate a loadable module to allow this access.";
+        let res = parse_audit2why_output(output);
+        assert_eq!(res, Some(("TERULE".to_string(), "".to_string())));
+    }
+
+    #[test]
+    fn test_parse_audit2why_badtcon() {
+        let output = "Was caused by:\n  Incorrect Target Context Label.\n  The file /var/www/html/index.html is labeled with default_t...";
+        let res = parse_audit2why_output(output);
+        assert_eq!(res, Some(("BADTCON".to_string(), "".to_string())));
+    }
+}
 /// audit2why 出力から boolean 名を抽出する
 /// "The boolean X was set incorrectly" / "turn on the X boolean"
 fn extract_boolean_name(line: &str) -> Option<String> {
-    // パターン 1: "The boolean <name> was set incorrectly"
-    if let Some(rest) = line.strip_prefix("The boolean ") {
-        let name = rest.split_whitespace().next()?;
-        if !name.is_empty() {
-            return Some(name.to_string());
+    let line = line.trim();
+    let l = line.to_lowercase();
+
+    // パターン 1: "The <name> boolean was set incorrectly"
+    if l.starts_with("the ") && l.contains(" boolean") {
+        let start_idx = "the ".len();
+        let end_idx = l.find(" boolean")?;
+        if end_idx > start_idx {
+            let name = line[start_idx..end_idx].trim().to_string();
+            if !name.is_empty() && !name.contains(' ') {
+                return Some(name);
+            }
         }
     }
     // パターン 2: "you must turn on the <name> boolean"
-    if line.contains("turn on the ") && line.contains(" boolean") {
-        let start = line.find("turn on the ")? + "turn on the ".len();
-        let rest = &line[start..];
-        let name = rest.split_whitespace().next()?;
-        if !name.is_empty() {
-            return Some(name.to_string());
+    if l.contains("turn on the ") && l.contains(" boolean") {
+        let start_idx = l.find("turn on the ")? + "turn on the ".len();
+        let end_idx = l.find(" boolean")?;
+        if end_idx > start_idx {
+            let name = line[start_idx..end_idx].trim().to_string();
+            if !name.is_empty() && !name.contains(' ') {
+                return Some(name);
+            }
         }
     }
     None

@@ -246,3 +246,57 @@ impl App {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Local;
+    use crate::selinux::avc::Remedy;
+
+    #[test]
+    fn test_screen_stack() {
+        let mut app = App::new();
+        assert_eq!(app.current_screen(), &Screen::AvcList);
+
+        app.push_screen(Screen::ModuleList);
+        assert_eq!(app.current_screen(), &Screen::ModuleList);
+
+        app.pop_screen();
+        assert_eq!(app.current_screen(), &Screen::AvcList);
+    }
+
+    #[test]
+    fn test_avc_filtering() {
+        let mut app = App::new();
+        let e1 = AvcEntry {
+            id: 1, first_seen: Local::now(), last_seen: Local::now(), count: 1,
+            process: "nginx".to_string(), perm: "read".to_string(), tclass: "file".to_string(),
+            scontext: "".to_string(), tcontext: "".to_string(), target: "/var/www/index.html".to_string(),
+            raw_lines: vec![], remedy: Remedy::Restorecon, resolved: false,
+            bool_description: None, syscall_name: None, errno_name: None,
+        };
+        let e2 = AvcEntry {
+            id: 2, first_seen: Local::now(), last_seen: Local::now(), count: 1,
+            process: "httpd".to_string(), perm: "write".to_string(), tclass: "file".to_string(),
+            scontext: "".to_string(), tcontext: "".to_string(), target: "/var/log/httpd.log".to_string(),
+            raw_lines: vec![], remedy: Remedy::Restorecon, resolved: false,
+            bool_description: None, syscall_name: None, errno_name: None,
+        };
+        app.avc_entries = vec![e1, e2];
+
+        // フィルタなし
+        assert_eq!(app.filtered_avc().len(), 2);
+
+        // プロセス名でフィルタ
+        app.avc_filter = "nginx".to_string();
+        let filtered = app.filtered_avc();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].process, "nginx");
+
+        // ターゲットパスでフィルタ
+        app.avc_filter = "/var/log".to_string();
+        let filtered = app.filtered_avc();
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].process, "httpd");
+    }
+}
