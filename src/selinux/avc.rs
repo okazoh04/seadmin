@@ -40,10 +40,9 @@ impl fmt::Display for Remedy {
 pub enum Severity {
     /// 緑: restorecon で修復可能
     Low,
-    /// 黄: boolean 変更 / TE ルール追加が必要
+    /// 黄: boolean 変更 / ポート追加
     Medium,
-    /// 赤: 制約違反 / execmem・execstack など（将来の CONSTRAINT 対応で使用）
-    #[allow(dead_code)]
+    /// 赤: カスタムポリシー生成が必要（未知の拒否）、または制約違反
     High,
 }
 
@@ -51,9 +50,9 @@ impl Remedy {
     /// Remedy から深刻度レベルを返す
     pub fn severity(&self) -> Severity {
         match self {
-            Remedy::Restorecon              => Severity::Low,
-            Remedy::Boolean(_)             => Severity::Medium,
-            Remedy::FileContext | Remedy::PortContext | Remedy::CustomPolicy => Severity::Medium,
+            Remedy::Restorecon => Severity::Low,
+            Remedy::Boolean(_) | Remedy::PortContext | Remedy::FileContext => Severity::Medium,
+            Remedy::CustomPolicy => Severity::High,
         }
     }
 

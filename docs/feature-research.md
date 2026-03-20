@@ -175,15 +175,15 @@ ausearch の raw 出力 | audit2allow -w
 
 ---
 
-#### C. severity レベル表示（緑/黄/赤）　🔲 未実装
+#### C. severity レベル表示（緑/黄/赤）　✅ 実装済み（v0.4.3）
 
 **概要：** AVC 一覧の Remedy 列またはインジケータ列に色付きレベルを表示。
 
 | レベル | 条件 |
 |---|---|
 | 緑 | `BADTCON` → restorecon で修復可能 |
-| 黄 | `BOOLEAN` / `TERULE` → 設定変更が必要 |
-| 赤 | execmem / execstack、または `CONSTRAINT` |
+| 黄 | `BOOLEAN` / `PortContext` / `FileContext` |
+| 赤 | `CustomPolicy`（未知の拒否）、または `CONSTRAINT` |
 
 **難易度：** 小
 
@@ -205,11 +205,11 @@ semanage fcontext -a -t TYPE 'PATH(/.*)?'; restorecon -Rv PATH
 
 ---
 
-#### E. `semodule -X 300` の適用　🔲 未実装
+#### E. `semodule -X 300` の適用　✅ 実装済み（v0.4.3）
 
 **概要：** カスタムポリシーのインストール時に優先度 300 を指定する。
 
-**現状：** `semodule -i NAME.pp`（優先度指定なし）
+**現状：** `semodule -X 300 -i NAME.pp`
 
 **修正後：** `semodule -X 300 -i NAME.pp`
 

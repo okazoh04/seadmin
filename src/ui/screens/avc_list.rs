@@ -68,17 +68,22 @@ pub fn render(f: &mut Frame, area: ratatui::layout::Rect, app: &mut App) {
                 Cell::from(format!(" {}", e.id))
             };
 
-            // Remedy 列: 選択中・処理済みは行スタイルに任せ、それ以外は severity で色付け
-            let remedy_cell = if selected || e.resolved {
+            // Remedy 列: 深刻度に応じた色付け
+            let (remedy_color, remedy_modifier) = match e.remedy.severity() {
+                Severity::Low => (Color::Green, Modifier::empty()),
+                Severity::Medium => (Color::Yellow, Modifier::empty()),
+                Severity::High => (Color::Rgb(255, 90, 90), Modifier::BOLD), // 明るい赤+太字
+            };
+
+            let remedy_cell = if e.resolved {
+                Cell::from(e.remedy.display_str(lang)).style(Style::default().fg(Color::DarkGray))
+            } else if selected {
+                // 選択中は背景色との兼ね合いで反転や高輝度カラーを使用
                 Cell::from(e.remedy.display_str(lang))
+                    .style(Style::default().fg(remedy_color).add_modifier(remedy_modifier).add_modifier(Modifier::BOLD))
             } else {
-                let color = match e.remedy.severity() {
-                    Severity::Low    => Color::Green,
-                    Severity::Medium => Color::Yellow,
-                    Severity::High   => Color::Red,
-                };
                 Cell::from(e.remedy.display_str(lang))
-                    .style(Style::default().fg(color))
+                    .style(Style::default().fg(remedy_color).add_modifier(remedy_modifier))
             };
 
             Row::new(vec![
