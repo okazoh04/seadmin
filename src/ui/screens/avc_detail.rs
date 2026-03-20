@@ -36,31 +36,43 @@ pub fn build_options(entry: &AvcEntry, lang: &Lang) -> Vec<RemOption> {
 
     match &entry.remedy {
         Remedy::PortContext => {
-            let port = entry
+            // entry.target が dest= の値（数字）か tcontext のフォールバックかを判定
+            // tcontext 形式 (user:role:type:level) の場合はパースに失敗するため
+            // raw_lines の dest= フィールドも追加で検索する
+            let port_opt = entry
                 .target
-                .split(':')
-                .last()
-                .and_then(|s| s.parse::<u16>().ok())
-                .map(|p| p.to_string())
-                .unwrap_or_else(|| "????".to_string());
-            let proto = if entry.tclass.contains("udp") { "udp" } else { "tcp" };
-            opts.push(RemOption {
-                key: 'A',
-                label: lang.opt_port_label(proto, &port),
-                command: vec![
-                    "semanage".into(),
-                    "port".into(),
-                    "-a".into(),
-                    "-t".into(),
-                    "ssh_port_t".into(),
-                    "-p".into(),
-                    proto.into(),
-                    port,
-                ],
-                description: lang.opt_port_desc(proto, &entry.target),
-                needs_auth: true,
-                warning: false,
-            });
+                .parse::<u16>()
+                .ok()
+                .or_else(|| {
+                    entry.raw_lines.iter().find_map(|line| {
+                        line.split_whitespace()
+                            .find(|s| s.starts_with("dest="))
+                            .and_then(|s| s["dest=".len()..].parse::<u16>().ok())
+                    })
+                })
+                .map(|p| p.to_string());
+
+            if let Some(port) = port_opt {
+                let proto = if entry.tclass.contains("udp") { "udp" } else { "tcp" };
+                let setype = entry.tcontext.split(':').nth(2).unwrap_or("port_t");
+                opts.push(RemOption {
+                    key: 'A',
+                    label: lang.opt_port_label(proto, &port),
+                    command: vec![
+                        "semanage".into(),
+                        "port".into(),
+                        "-a".into(),
+                        "-t".into(),
+                        setype.into(),
+                        "-p".into(),
+                        proto.into(),
+                        port,
+                    ],
+                    description: lang.opt_port_desc(proto, &entry.target),
+                    needs_auth: true,
+                    warning: false,
+                });
+            }
         }
         Remedy::FileContext | Remedy::Restorecon => {
             let path = entry.target.trim_matches('"').to_string();
