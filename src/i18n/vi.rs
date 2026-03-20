@@ -92,7 +92,7 @@ pub fn lockout_msg(secs: u64) -> String {
     format!("  Bị khóa (còn {} giây)", secs)
 }
 pub fn log_overlay_title(total: usize) -> String {
-    format!(" Nhật ký  {} mục  ↑↓:Cuộn  l:Đóng ", total)
+    format!(" Nhật ký  {} mục  ↑↓:Cuộn  Esc:Đóng ", total)
 }
 pub fn opt_port_label(proto: &str, port: &str) -> String {
     format!("Thêm ngữ cảnh cổng  semanage port -a -t ssh_port_t -p {} {}", proto, port)

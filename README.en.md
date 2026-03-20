@@ -88,7 +88,7 @@ The display language is determined automatically from the `LANG` environment var
 | `/` | Start filter input (process / action / target) |
 | `Esc` | Clear filter |
 | `r` | Reload access denial log |
-| `l` | Toggle operation log overlay |
+| `l` | Show operation log overlay (Esc to close) |
 | `q` | Quit |
 | `Ctrl+C` | Force quit |
 

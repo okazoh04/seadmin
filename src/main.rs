@@ -440,16 +440,21 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 break;
             }
 
-            // l キーでログオーバーレイをトグル（全画面共通）
+            // l キーでログオーバーレイを表示（全画面共通）
             if key.code == KeyCode::Char('l') && !app.avc_filter_active {
-                app.show_log = !app.show_log;
-                app.log_scroll = 0;
+                if !app.show_log {
+                    app.show_log = true;
+                    app.log_scroll = 0;
+                }
                 continue;
             }
 
-            // ログオーバーレイ表示中はスクロールのみ受け付ける
+            // ログオーバーレイ表示中はスクロールと終了(Esc)のみ受け付ける
             if app.show_log {
                 match key.code {
+                    KeyCode::Esc => {
+                        app.show_log = false;
+                    }
                     KeyCode::Up | KeyCode::Char('k') => {
                         app.log_scroll = app.log_scroll.saturating_add(1);
                     }

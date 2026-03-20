@@ -92,7 +92,7 @@ pub fn lockout_msg(secs: u64) -> String {
     format!("  已鎖定（{}秒後解除）", secs)
 }
 pub fn log_overlay_title(total: usize) -> String {
-    format!(" 日誌  {} 條  ↑↓:捲動  l:關閉 ", total)
+    format!(" 日誌  {} 條  ↑↓:捲動  Esc:關閉 ", total)
 }
 pub fn opt_port_label(proto: &str, port: &str) -> String {
     format!("新增連接埠內容  semanage port -a -t ssh_port_t -p {} {}", proto, port)

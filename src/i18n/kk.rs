@@ -92,7 +92,7 @@ pub fn lockout_msg(secs: u64) -> String {
     format!("  Бұғатталған ({} сек қалды)", secs)
 }
 pub fn log_overlay_title(total: usize) -> String {
-    format!(" Журнал  {} жазба  ↑↓:Айналдыру  l:Жабу ", total)
+    format!(" Журнал  {} жазба  ↑↓:Айналдыру  Esc:Жабу ", total)
 }
 pub fn opt_port_label(proto: &str, port: &str) -> String {
     format!("Порт контекстін қосу  semanage port -a -t ssh_port_t -p {} {}", proto, port)

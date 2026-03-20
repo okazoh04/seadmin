@@ -92,7 +92,7 @@ pub fn lockout_msg(secs: u64) -> String {
     format!("  مقفل ({} ثانية متبقية)", secs)
 }
 pub fn log_overlay_title(total: usize) -> String {
-    format!(" السجل  {} إدخال  ↑↓:تمرير  l:إغلاق ", total)
+    format!(" السجل  {} إدخال  ↑↓:تمرير  Esc:إغلاق ", total)
 }
 pub fn opt_port_label(proto: &str, port: &str) -> String {
     format!("إضافة سياق منفذ  semanage port -a -t ssh_port_t -p {} {}", proto, port)

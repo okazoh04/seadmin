@@ -92,7 +92,7 @@ pub fn lockout_msg(secs: u64) -> String {
     format!("  Verrouillé ({} secondes restantes)", secs)
 }
 pub fn log_overlay_title(total: usize) -> String {
-    format!(" Journal  {} entrées  ↑↓:Défiler  l:Fermer ", total)
+    format!(" Journal  {} entrées  ↑↓:Défiler  Esc:Fermer ", total)
 }
 pub fn opt_port_label(proto: &str, port: &str) -> String {
     format!("Ajouter contexte de port  semanage port -a -t ssh_port_t -p {} {}", proto, port)

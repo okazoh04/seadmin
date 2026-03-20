@@ -92,7 +92,7 @@ pub fn lockout_msg(secs: u64) -> String {
     format!("  잠금 중 ({}초 후 해제)", secs)
 }
 pub fn log_overlay_title(total: usize) -> String {
-    format!(" 로그  {}개  ↑↓:스크롤  l:닫기 ", total)
+    format!(" 로그  {}개  ↑↓:스크롤  Esc:닫기 ", total)
 }
 pub fn opt_port_label(proto: &str, port: &str) -> String {
     format!("포트 컨텍스트 추가  semanage port -a -t ssh_port_t -p {} {}", proto, port)

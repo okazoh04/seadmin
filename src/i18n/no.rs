@@ -92,7 +92,7 @@ pub fn lockout_msg(secs: u64) -> String {
     format!("  Utestengt ({} sekunder gjenstår)", secs)
 }
 pub fn log_overlay_title(total: usize) -> String {
-    format!(" Logg  {} oppføringer  ↑↓:Rull  l:Lukk ", total)
+    format!(" Logg  {} oppføringer  ↑↓:Rull  Esc:Lukk ", total)
 }
 pub fn opt_port_label(proto: &str, port: &str) -> String {
     format!("Legg til portkontekst  semanage port -a -t ssh_port_t -p {} {}", proto, port)
