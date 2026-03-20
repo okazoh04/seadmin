@@ -9,10 +9,11 @@
  */
 
 // ── 하단 힌트 ─────────────────────────────────────────────────────────────────
-pub const HINT_AVC_LIST:     &str = "↑↓/jk:이동  Enter:상세  /:필터  r:새로고침  l:로그  q:종료";
+pub const HINT_AVC_LIST:     &str = "↑↓/jk:이동  Enter:상세  /:필터  r:새로고침  m:모듈  l:로그  q:종료";
 pub const HINT_AVC_DETAIL:   &str = "A-F:선택  Esc/←:뒤로  Enter:확인";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:스크롤  Enter:적용  Esc:취소";
 pub const HINT_AUTH:         &str = "Enter:실행  Esc:취소";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:이동  d:삭제  Esc:뒤로";
 
 // ── 테이블 헤더 ───────────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "발생시각";
@@ -20,7 +21,9 @@ pub const COL_PROCESS:  &str = "프로세스";
 pub const COL_ACTION:   &str = "작업";
 pub const COL_TARGET:   &str = "대상";
 pub const COL_COUNT:    &str = "횟수";
-pub const COL_REMEDY:   &str = "해결방법";
+pub const COL_REMEDY:       &str = "해결방법";
+pub const COL_PRIORITY:     &str = "우선순위";
+pub const COL_MODULE_NAME:  &str = "모듈명";
 
 // ── 상태 / 메시지 ─────────────────────────────────────────────────────────────
 pub const LOADING_MSG:      &str = " ⏳ AVC 로그 로딩 중...";
@@ -70,6 +73,15 @@ pub const REMEDY_CUSTOM_POLICY: &str = "커스텀 정책";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" 접근 거부 목록  [오늘]  미처리: {}건 / 전체: {}건 ", unresolved, total)
 }
+pub fn module_list_title(count: usize) -> String {
+    format!(" 정책 모듈 목록  {} 개 ", count)
+}
+pub fn module_delete_desc(name: &str) -> String {
+    format!("정책 모듈 '{}' 를 삭제합니다.", name)
+}
+pub fn module_deleted(name: &str) -> String {
+    format!("모듈 '{}' 가 삭제되었습니다.", name)
+}
 pub fn avc_loaded(count: usize) -> String {
     format!("AVC 항목 {}개 로드됨", count)
 }
@@ -92,10 +104,10 @@ pub fn opt_restorecon_label(path: &str) -> String {
     format!("restorecon으로 복원  restorecon -Rv {}", path)
 }
 pub fn opt_fcontext_label(file_type: &str, path: &str) -> String {
-    format!("fcontext 변경  semanage fcontext -a -t {} {}(.*)", file_type, path)
+    format!("fcontext 변경 + restorecon  semanage fcontext -a -t '{}' '{}(/.*)?'", file_type, path)
 }
 pub fn opt_fcontext_desc(file_type: &str) -> String {
-    format!("이 경로에 {}를 할당하는 규칙을 추가합니다. 적용 후 restorecon을 실행하세요.", file_type)
+    format!("이 경로에 {}를 할당하는 규칙을 추가하고 restorecon을 자동 실행합니다.", file_type)
 }
 pub fn opt_bool_temp_label(bool_name: &str) -> String {
     format!("Boolean 활성화 (임시)  setsebool {} on", bool_name)
@@ -138,6 +150,8 @@ pub fn elapsed_secs(n: u64)  -> String { format!("{}초 전", n) }
 pub fn elapsed_mins(n: u64)  -> String { format!("{}분 전", n) }
 pub fn elapsed_hours(n: u64) -> String { format!("{}시간 전", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("{}일 전", n) }
+pub const LABEL_FIRST_SEEN: &str = "최초 발생";
+pub const LABEL_LAST_SEEN:  &str = "최종 발생";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "경고: 로케일이 UTF-8이 아닐 수 있습니다 (LANG={}).\n\

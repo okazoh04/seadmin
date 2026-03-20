@@ -28,14 +28,15 @@ use std::io;
 use std::time::Duration;
 use tokio::sync::mpsc;
 
-use crate::selinux::avc::parse_ausearch_output;
-use crate::selinux::commands::{ausearch_avc, getenforce, hostname};
+use crate::selinux::avc::{parse_ausearch_output, Remedy};
+use crate::selinux::commands::{audit2why, ausearch_avc, getenforce, hostname, sepolicy_bool_desc, semodule_list_full, PolicyModule};
 use crate::sudo::runner::{run_with_sudo, SudoResult};
 use crate::ui::app::{App, AuthContext, Screen};
 use crate::ui::screens::avc_detail::{build_options, render as render_detail, select_option};
 use crate::ui::screens::avc_list::render as render_avc_list;
 use crate::ui::screens::auth_popup::render as render_auth;
 use crate::ui::screens::policy_review::render as render_policy_review;
+use crate::ui::screens::module_list::render as render_module_list;
 use crate::ui::widgets::{render_footer, render_header, render_log_overlay, render_status};
 
 /// バックグラウンドタスクから UI スレッドへのメッセージ
@@ -46,6 +47,12 @@ enum AppMsg {
     EnforceMode(String),
     Hostname(String),
     PolicyPreview { te: String, pp_path: String },
+    /// audit2why による Remedy 更新: (entry_id, new_remedy)
+    Audit2WhyDone(usize, crate::selinux::avc::Remedy),
+    /// sepolicy booleans による説明文: (entry_id, description)
+    BoolDescDone(usize, String),
+    /// semodule -lfull の結果
+    ModuleListLoaded(Vec<PolicyModule>),
 }
 
 #[tokio::main]
@@ -157,6 +164,23 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         ));
                     }
                     app.update_avc_entries(entries);
+                    // audit2why で Remedy を精緻化（バックグラウンド）
+                    for entry in &app.avc_entries {
+                        let raw = entry.raw_lines.clone();
+                        let id  = entry.id;
+                        let tx2 = tx.clone();
+                        tokio::spawn(async move {
+                            if let Some((category, bool_name)) = audit2why(&raw).await {
+                                let remedy = match category.as_str() {
+                                    "BOOLEAN" if !bool_name.is_empty() => Remedy::Boolean(bool_name),
+                                    "BADTCON"   => Remedy::Restorecon,
+                                    "TERULE"    => Remedy::CustomPolicy,
+                                    _           => return,
+                                };
+                                let _ = tx2.send(AppMsg::Audit2WhyDone(id, remedy)).await;
+                            }
+                        });
+                    }
                     app.loading = false;
                     if app.selinux_mode == "Disabled" || app.selinux_mode == "UNKNOWN" {
                         app.status_message = Some(app.lang.selinux_disabled().to_string());
@@ -172,40 +196,69 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     app.loading = false;
                     app.status_message = Some(format!("⚠ {}", e));
                 }
+                AppMsg::ModuleListLoaded(modules) => {
+                    app.module_list = modules;
+                    app.module_cursor = 0;
+                    app.loading = false;
+                }
                 AppMsg::SudoResult(res) => match res {
                     SudoResult::Ok => {
                         app.loading = false;
                         app.loading_label = None;
                         app.append_log(app.lang.log_cmd_ok().to_string());
-                        app.pending_auth_ctx = None;
-                        // 処理対象エントリを処理済みにする（screen_stack に残っている AvcDetail の id を参照）
-                        let resolved_id = app.screen_stack.iter().find_map(|s| {
-                            if let Screen::AvcDetail(id) = s { Some(*id) } else { None }
-                        });
-                        if let Some(id) = resolved_id {
-                            app.mark_resolved(id);
-                        }
-                        // PolicyReview の .pp ファイルを削除
-                        for s in &app.screen_stack {
-                            if let Screen::PolicyReview { pp_path, .. } = s {
-                                let path = pp_path.clone();
-                                tokio::spawn(async move {
-                                    let _ = tokio::fs::remove_file(path).await;
-                                });
-                            }
-                        }
+                        let pending_ctx = app.pending_auth_ctx.take();
                         app.auth_error = None;
                         app.auth_state.reset();
-                        app.screen_stack.truncate(1);
-                        app.status_message = Some(app.lang.op_complete().to_string());
-                        // AVC を再取得
-                        let tx2 = tx.clone();
-                        tokio::spawn(async move {
-                            if let Ok(raw) = ausearch_avc().await {
-                                let entries = parse_ausearch_output(&raw);
-                                let _ = tx2.send(AppMsg::AvcLoaded(entries)).await;
+
+                        // ModuleList 画面からの操作（モジュール削除）かチェック
+                        let is_module_op = app.screen_stack.iter().any(|s| matches!(s, Screen::ModuleList));
+                        if is_module_op {
+                            // 削除したモジュール名を取得してメッセージ表示
+                            let deleted_name = pending_ctx.as_ref()
+                                .and_then(|ctx| ctx.command.get(4))
+                                .cloned()
+                                .unwrap_or_default();
+                            app.status_message = Some(if deleted_name.is_empty() {
+                                app.lang.op_complete().to_string()
+                            } else {
+                                app.lang.module_deleted(&deleted_name)
+                            });
+                            // AvcList に戻り、モジュール一覧を再取得
+                            app.screen_stack.truncate(1);
+                            let tx2 = tx.clone();
+                            tokio::spawn(async move {
+                                if let Ok(modules) = semodule_list_full().await {
+                                    let _ = tx2.send(AppMsg::ModuleListLoaded(modules)).await;
+                                }
+                            });
+                        } else {
+                            app.status_message = Some(app.lang.op_complete().to_string());
+                            // 処理対象エントリを処理済みにする
+                            let resolved_id = app.screen_stack.iter().find_map(|s| {
+                                if let Screen::AvcDetail(id) = s { Some(*id) } else { None }
+                            });
+                            if let Some(id) = resolved_id {
+                                app.mark_resolved(id);
                             }
-                        });
+                            // PolicyReview の .pp ファイルを削除
+                            for s in &app.screen_stack {
+                                if let Screen::PolicyReview { pp_path, .. } = s {
+                                    let path = pp_path.clone();
+                                    tokio::spawn(async move {
+                                        let _ = tokio::fs::remove_file(path).await;
+                                    });
+                                }
+                            }
+                            app.screen_stack.truncate(1);
+                            // AVC を再取得
+                            let tx2 = tx.clone();
+                            tokio::spawn(async move {
+                                if let Ok(raw) = ausearch_avc().await {
+                                    let entries = parse_ausearch_output(&raw);
+                                    let _ = tx2.send(AppMsg::AvcLoaded(entries)).await;
+                                }
+                            });
+                        }
                     }
                     SudoResult::AuthFailed => {
                         app.loading = false;
@@ -232,6 +285,27 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         );
                     }
                 },
+                AppMsg::Audit2WhyDone(id, remedy) => {
+                    app.append_log(format!("[INFO] audit2why #{}: {:?}", id, remedy));
+                    // Boolean の場合は sepolicy で説明文を取得
+                    if let Remedy::Boolean(ref bool_name) = remedy {
+                        let bool_name = bool_name.clone();
+                        let tx2 = tx.clone();
+                        tokio::spawn(async move {
+                            if let Some(desc) = sepolicy_bool_desc(&bool_name).await {
+                                let _ = tx2.send(AppMsg::BoolDescDone(id, desc)).await;
+                            }
+                        });
+                    }
+                    if let Some(entry) = app.avc_entries.iter_mut().find(|e| e.id == id) {
+                        entry.remedy = remedy;
+                    }
+                }
+                AppMsg::BoolDescDone(id, desc) => {
+                    if let Some(entry) = app.avc_entries.iter_mut().find(|e| e.id == id) {
+                        entry.bool_description = Some(desc);
+                    }
+                }
                 AppMsg::EnforceMode(m) => {
                     app.append_log(app.lang.log_selinux_mode(&m));
                     if m == "Disabled" && !app.loading {
@@ -292,6 +366,11 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     render_policy_review(f, chunks[1], &te, app.policy_review_scroll, &app.lang);
                     render_footer(f, chunks[2], hint);
                 }
+                Screen::ModuleList => {
+                    let hint = app.lang.hint_module_list();
+                    render_module_list(f, chunks[1], &app);
+                    render_footer(f, chunks[2], hint);
+                }
                 Screen::Auth(ref ctx) => {
                     // 背景として前画面を描画
                     match *ctx.prev_screen.clone() {
@@ -311,6 +390,9 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                 app.policy_review_scroll,
                                 &app.lang,
                             );
+                        }
+                        Screen::ModuleList => {
+                            render_module_list(f, chunks[1], &app);
                         }
                         _ => {
                             render_avc_list(f, chunks[1], &mut app);
@@ -425,6 +507,22 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         app.avc_filter.push(c);
                         app.avc_cursor = 0;
                     }
+                    KeyCode::Char('m') => {
+                        app.module_cursor = 0;
+                        app.push_screen(Screen::ModuleList);
+                        app.loading = true;
+                        let tx2 = tx.clone();
+                        tokio::spawn(async move {
+                            match semodule_list_full().await {
+                                Ok(modules) => {
+                                    let _ = tx2.send(AppMsg::ModuleListLoaded(modules)).await;
+                                }
+                                Err(_) => {
+                                    let _ = tx2.send(AppMsg::ModuleListLoaded(Vec::new())).await;
+                                }
+                            }
+                        });
+                    }
                     _ => {}
                 },
 
@@ -536,6 +634,44 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     }
                 }
 
+                Screen::ModuleList => match key.code {
+                    KeyCode::Esc => {
+                        app.pop_screen();
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        if app.module_cursor > 0 {
+                            app.module_cursor -= 1;
+                        }
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        if app.module_cursor < app.module_list.len().saturating_sub(1) {
+                            app.module_cursor += 1;
+                        }
+                    }
+                    KeyCode::Char('d') => {
+                        if let Some(m) = app.module_list.get(app.module_cursor).cloned() {
+                            let cmd = vec![
+                                "semodule".to_string(),
+                                "-X".to_string(),
+                                m.priority.to_string(),
+                                "-r".to_string(),
+                                m.name.clone(),
+                            ];
+                            let desc = app.lang.module_delete_desc(&m.name);
+                            let ctx = AuthContext {
+                                command: cmd,
+                                description: desc,
+                                prev_screen: Box::new(Screen::ModuleList),
+                            };
+                            if !try_sudo_with_cache(&mut app, ctx.clone(), &tx) {
+                                app.push_screen(Screen::Auth(ctx));
+                                app.prepare_auth();
+                            }
+                        }
+                    }
+                    _ => {}
+                },
+
                 Screen::PolicyReview { te, pp_path } => match key.code {
                     KeyCode::Esc => {
                         // キャンセル時は .pp を削除
@@ -548,6 +684,8 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         // semodule -i で適用 → キャッシュがあれば直接実行、なければ Auth ポップアップへ
                         let cmd = vec![
                             "semodule".to_string(),
+                            "-X".to_string(),
+                            "300".to_string(),
                             "-i".to_string(),
                             pp_path.clone(),
                         ];

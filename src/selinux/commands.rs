@@ -63,6 +63,117 @@ pub async fn hostname() -> Result<String> {
 }
 
 
+/// `ausearch` の raw 出力（AVC 行）を `audit2allow -w` に渡して原因カテゴリを返す
+///
+/// 戻り値:
+///   - `Some(("BOOLEAN", "bool_name"))` — boolean が off
+///   - `Some(("BADTCON", ""))` — ターゲットのラベル不正
+///   - `Some(("TERULE", ""))` — TE allow ルール不足
+///   - `Some(("CONSTRAINT", ""))` — MLS/MCS 制約違反
+///   - `None` — 判定不能 / コマンドなし
+pub async fn audit2why(avc_lines: &[String]) -> Option<(String, String)> {
+    use tokio::io::AsyncWriteExt;
+
+    let mut child = tokio::process::Command::new("audit2allow")
+        .args(["-w"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        let input = avc_lines.join("\n");
+        let _ = stdin.write_all(input.as_bytes()).await;
+    }
+
+    let output = child.wait_with_output().await.ok()?;
+    let text = String::from_utf8_lossy(&output.stdout);
+    parse_audit2why_output(&text)
+}
+
+/// `audit2allow -w` の出力を解析して原因カテゴリを返す
+///
+/// setroubleshoot の解析ロジックに準拠:
+///   "Was caused by:" が見つかるまでスキャンし、その後の
+///   "Missing type enforcement (TE) allow rule" → TERULE
+///   "The boolean"                               → BOOLEAN + bool 名
+///   "Incorrect Target Context Label"            → BADTCON  (英語)
+///   "target context label"                      → BADTCON  (別表現)
+///   "MLS"                                       → CONSTRAINT
+fn parse_audit2why_output(text: &str) -> Option<(String, String)> {
+    // "Was caused by:" 以降の行を解析
+    let mut after_cause = false;
+    for line in text.lines() {
+        let l = line.trim();
+        if l.starts_with("Was caused by:") {
+            after_cause = true;
+            continue;
+        }
+        if !after_cause {
+            continue;
+        }
+        // BOOLEAN: "The boolean X was set incorrectly."
+        //          "you must turn on the X boolean"
+        if let Some(bool_name) = extract_boolean_name(l) {
+            return Some(("BOOLEAN".to_string(), bool_name));
+        }
+        if l.contains("Missing type enforcement") || l.contains("allow rule") {
+            return Some(("TERULE".to_string(), String::new()));
+        }
+        if l.contains("Incorrect Target Context Label") || l.contains("target context label") {
+            return Some(("BADTCON".to_string(), String::new()));
+        }
+        if l.contains("MLS") || l.contains("MCS") {
+            return Some(("CONSTRAINT".to_string(), String::new()));
+        }
+    }
+    None
+}
+
+/// audit2why 出力から boolean 名を抽出する
+/// "The boolean X was set incorrectly" / "turn on the X boolean"
+fn extract_boolean_name(line: &str) -> Option<String> {
+    // パターン 1: "The boolean <name> was set incorrectly"
+    if let Some(rest) = line.strip_prefix("The boolean ") {
+        let name = rest.split_whitespace().next()?;
+        if !name.is_empty() {
+            return Some(name.to_string());
+        }
+    }
+    // パターン 2: "you must turn on the <name> boolean"
+    if line.contains("turn on the ") && line.contains(" boolean") {
+        let start = line.find("turn on the ")? + "turn on the ".len();
+        let rest = &line[start..];
+        let name = rest.split_whitespace().next()?;
+        if !name.is_empty() {
+            return Some(name.to_string());
+        }
+    }
+    None
+}
+
+/// `sepolicy booleans -b BOOL_NAME` を実行して説明文を返す
+/// sepolicy が存在しない場合は None を返す
+pub async fn sepolicy_bool_desc(bool_name: &str) -> Option<String> {
+    let out = Command::new("sepolicy")
+        .args(["booleans", "-b", bool_name])
+        .output()
+        .await
+        .ok()?;
+    let text = String::from_utf8_lossy(&out.stdout);
+    // 出力形式: "BOOL_NAME - Description text"
+    for line in text.lines() {
+        if let Some(desc) = line.splitn(2, " - ").nth(1) {
+            let d = desc.trim().to_string();
+            if !d.is_empty() {
+                return Some(d);
+            }
+        }
+    }
+    None
+}
+
 /// audit2allow -M でポリシーを生成し、(.te の内容, .pp ファイルパス) を返す
 /// .pp ファイルは /tmp に置いたまま返す。呼び出し元が semodule -i 後に削除すること。
 pub async fn audit2allow_generate(avc_lines: &[String], module_name: &str) -> Result<(String, String)> {
@@ -100,4 +211,35 @@ pub async fn audit2allow_generate(avc_lines: &[String], module_name: &str) -> Re
     // .pp は semodule -i 後に呼び出し元が削除する
 
     Ok((te, pp_path.to_string_lossy().to_string()))
+}
+
+/// ポリシーモジュール情報
+#[derive(Debug, Clone)]
+pub struct PolicyModule {
+    pub name: String,
+    pub priority: u16,
+}
+
+/// `semodule -lfull` を実行してモジュール一覧を返す
+/// 出力形式: "priority  name  type" (例: "400  base  pp")
+pub async fn semodule_list_full() -> Result<Vec<PolicyModule>> {
+    let out = Command::new("semodule")
+        .args(["-lfull"])
+        .output()
+        .await?;
+    let text = String::from_utf8_lossy(&out.stdout);
+    let mut modules = Vec::new();
+    for line in text.lines() {
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() >= 2 {
+            if let Ok(priority) = parts[0].parse::<u16>() {
+                modules.push(PolicyModule {
+                    name: parts[1].to_string(),
+                    priority,
+                });
+            }
+        }
+    }
+    modules.sort_by(|a, b| b.priority.cmp(&a.priority).then(a.name.cmp(&b.name)));
+    Ok(modules)
 }

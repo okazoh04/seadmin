@@ -35,7 +35,28 @@ impl fmt::Display for Remedy {
     }
 }
 
+/// 深刻度レベル
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Severity {
+    /// 緑: restorecon で修復可能
+    Low,
+    /// 黄: boolean 変更 / TE ルール追加が必要
+    Medium,
+    /// 赤: 制約違反 / execmem・execstack など（将来の CONSTRAINT 対応で使用）
+    #[allow(dead_code)]
+    High,
+}
+
 impl Remedy {
+    /// Remedy から深刻度レベルを返す
+    pub fn severity(&self) -> Severity {
+        match self {
+            Remedy::Restorecon              => Severity::Low,
+            Remedy::Boolean(_)             => Severity::Medium,
+            Remedy::FileContext | Remedy::PortContext | Remedy::CustomPolicy => Severity::Medium,
+        }
+    }
+
     /// ロケール対応の表示文字列
     pub fn display_str(&self, lang: &Lang) -> String {
         match self {
@@ -52,6 +73,7 @@ impl Remedy {
 #[derive(Debug, Clone)]
 pub struct AvcEntry {
     pub id: usize,
+    pub first_seen: DateTime<Local>,
     pub last_seen: DateTime<Local>,
     pub count: usize,
     pub process: String,
@@ -63,6 +85,8 @@ pub struct AvcEntry {
     pub raw_lines: Vec<String>,
     pub remedy: Remedy,
     pub resolved: bool,
+    /// Boolean remedy 時の sepolicy 説明文（非同期で補完）
+    pub bool_description: Option<String>,
 }
 
 impl AvcEntry {
@@ -107,6 +131,9 @@ pub fn parse_ausearch_output(raw: &str) -> Vec<AvcEntry> {
                     existing.count += 1;
                     if entry.last_seen > existing.last_seen {
                         existing.last_seen = entry.last_seen;
+                    }
+                    if entry.first_seen < existing.first_seen {
+                        existing.first_seen = entry.first_seen;
                     }
                     existing.raw_lines.extend(entry.raw_lines);
                 }
@@ -208,6 +235,7 @@ fn parse_block(
 
     Some(AvcEntry {
         id,
+        first_seen: ts,
         last_seen: ts,
         count: 1,
         process,
@@ -219,6 +247,7 @@ fn parse_block(
         raw_lines: block.lines().map(str::to_string).collect(),
         remedy,
         resolved: false,
+        bool_description: None,
     })
 }
 

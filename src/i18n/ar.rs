@@ -9,10 +9,11 @@
  */
 
 // ── تلميحات التذييل ───────────────────────────────────────────────────────────
-pub const HINT_AVC_LIST:     &str = "↑↓/jk:تنقل  Enter:تفاصيل  /:تصفية  r:تحديث  l:سجل  q:خروج";
+pub const HINT_AVC_LIST:     &str = "↑↓/jk:تنقل  Enter:تفاصيل  /:تصفية  r:تحديث  m:وحدات  l:سجل  q:خروج";
 pub const HINT_AVC_DETAIL:   &str = "A-F:اختيار  Esc/←:رجوع  Enter:تأكيد";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:تمرير  Enter:تطبيق  Esc:إلغاء";
 pub const HINT_AUTH:         &str = "Enter:تنفيذ  Esc:إلغاء";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:تنقل  d:حذف  Esc:رجوع";
 
 // ── رؤوس الجدول ──────────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "الوقت";
@@ -20,7 +21,9 @@ pub const COL_PROCESS:  &str = "العملية";
 pub const COL_ACTION:   &str = "الإجراء";
 pub const COL_TARGET:   &str = "الهدف";
 pub const COL_COUNT:    &str = "العدد";
-pub const COL_REMEDY:   &str = "الحل";
+pub const COL_REMEDY:       &str = "الحل";
+pub const COL_PRIORITY:     &str = "الأولوية";
+pub const COL_MODULE_NAME:  &str = "الوحدة";
 
 // ── الحالة / الرسائل ──────────────────────────────────────────────────────────
 pub const LOADING_MSG:      &str = " ⏳ جارٍ تحميل سجل AVC...";
@@ -70,6 +73,15 @@ pub const REMEDY_CUSTOM_POLICY: &str = "سياسة مخصصة";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" رفض الوصول  [اليوم]  غير محلول: {} / الإجمالي: {} ", unresolved, total)
 }
+pub fn module_list_title(count: usize) -> String {
+    format!(" وحدات السياسة  {} وحدة ", count)
+}
+pub fn module_delete_desc(name: &str) -> String {
+    format!("حذف وحدة السياسة '{}'.", name)
+}
+pub fn module_deleted(name: &str) -> String {
+    format!("تم حذف الوحدة '{}'.", name)
+}
 pub fn avc_loaded(count: usize) -> String {
     format!("تم تحميل {} إدخال AVC", count)
 }
@@ -92,10 +104,10 @@ pub fn opt_restorecon_label(path: &str) -> String {
     format!("إصلاح باستخدام restorecon  restorecon -Rv {}", path)
 }
 pub fn opt_fcontext_label(file_type: &str, path: &str) -> String {
-    format!("تغيير fcontext  semanage fcontext -a -t {} {}(.*)", file_type, path)
+    format!("تغيير fcontext + restorecon  semanage fcontext -a -t '{}' '{}(/.*)?'", file_type, path)
 }
 pub fn opt_fcontext_desc(file_type: &str) -> String {
-    format!("إضافة قاعدة لتعيين {} لهذا المسار. شغّل restorecon بعد التطبيق.", file_type)
+    format!("إضافة قاعدة لتعيين {} لهذا المسار وتشغيل restorecon تلقائياً.", file_type)
 }
 pub fn opt_bool_temp_label(bool_name: &str) -> String {
     format!("تفعيل Boolean (مؤقت)  setsebool {} on", bool_name)
@@ -138,6 +150,8 @@ pub fn elapsed_secs(n: u64)  -> String { format!("منذ {}ث", n) }
 pub fn elapsed_mins(n: u64)  -> String { format!("منذ {}د", n) }
 pub fn elapsed_hours(n: u64) -> String { format!("منذ {}س", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("منذ {}ي", n) }
+pub const LABEL_FIRST_SEEN: &str = "أول ظهور";
+pub const LABEL_LAST_SEEN:  &str = "آخر ظهور";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "تحذير: قد لا يكون الإعداد المحلي UTF-8 (LANG={}).\n\

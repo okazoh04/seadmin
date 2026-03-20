@@ -10,6 +10,7 @@
 
 use crate::i18n::Lang;
 use crate::selinux::avc::AvcEntry;
+use crate::selinux::commands::PolicyModule;
 use std::collections::VecDeque;
 use std::io::Write;
 use zeroize::Zeroizing;
@@ -25,6 +26,8 @@ pub enum Screen {
         te: String,
         pp_path: String,
     },
+    /// semodule -lfull で取得したモジュール管理画面
+    ModuleList,
 }
 
 /// 認証ポップアップを表示する際のコンテキスト
@@ -117,6 +120,9 @@ pub struct App {
     pub log_file: Option<std::fs::File>,
     /// 表示言語（起動時に LANG 環境変数から決定）
     pub lang: Lang,
+    /// ポリシーモジュール一覧
+    pub module_list: Vec<PolicyModule>,
+    pub module_cursor: usize,
 }
 
 impl App {
@@ -145,6 +151,8 @@ impl App {
             show_log: false,
             log_file: None,
             lang: crate::i18n::detect_lang(),
+            module_list: Vec::new(),
+            module_cursor: 0,
         }
     }
 

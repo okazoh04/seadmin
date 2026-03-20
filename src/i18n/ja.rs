@@ -9,18 +9,21 @@
  */
 
 // ── フッターヒント ────────────────────────────────────────────────────────────
-pub const HINT_AVC_LIST:     &str = "↑↓/jk:移動  Enter:詳細  /:フィルタ  r:更新  l:ログ  q:終了";
+pub const HINT_AVC_LIST:     &str = "↑↓/jk:移動  Enter:詳細  /:フィルタ  r:更新  m:モジュール  l:ログ  q:終了";
 pub const HINT_AVC_DETAIL:   &str = "A-F:対処選択  Esc/←:戻る  Enter:確認へ";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:スクロール  Enter:適用  Esc:キャンセル";
 pub const HINT_AUTH:         &str = "Enter:実行  Esc:キャンセル";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:移動  d:削除  Esc:戻る";
 
 // ── テーブルヘッダー ─────────────────────────────────────────────────────────
-pub const COL_OCCURRED: &str = "発生";
-pub const COL_PROCESS:  &str = "プロセス";
-pub const COL_ACTION:   &str = "操作";
-pub const COL_TARGET:   &str = "対象";
-pub const COL_COUNT:    &str = "件数";
-pub const COL_REMEDY:   &str = "解決策候補";
+pub const COL_OCCURRED:     &str = "発生";
+pub const COL_PROCESS:      &str = "プロセス";
+pub const COL_ACTION:       &str = "操作";
+pub const COL_TARGET:       &str = "対象";
+pub const COL_COUNT:        &str = "件数";
+pub const COL_REMEDY:       &str = "解決策候補";
+pub const COL_PRIORITY:     &str = "優先度";
+pub const COL_MODULE_NAME:  &str = "モジュール名";
 
 // ── ステータス・メッセージ ────────────────────────────────────────────────────
 pub const LOADING_MSG:      &str = " ⏳ AVC ログを読み込み中...";
@@ -70,6 +73,15 @@ pub const REMEDY_CUSTOM_POLICY: &str = "カスタムポリシー";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" アクセス拒否一覧  [本日]  未対処: {}件 / 全 {}件 ", unresolved, total)
 }
+pub fn module_list_title(count: usize) -> String {
+    format!(" ポリシーモジュール一覧  {} 件 ", count)
+}
+pub fn module_delete_desc(name: &str) -> String {
+    format!("ポリシーモジュール '{}' を削除します。", name)
+}
+pub fn module_deleted(name: &str) -> String {
+    format!("モジュール '{}' を削除しました。", name)
+}
 pub fn avc_loaded(count: usize) -> String {
     format!("{} 件の AVC を取得しました", count)
 }
@@ -92,10 +104,10 @@ pub fn opt_restorecon_label(path: &str) -> String {
     format!("restorecon で修復  restorecon -Rv {}", path)
 }
 pub fn opt_fcontext_label(file_type: &str, path: &str) -> String {
-    format!("fcontext を変更  semanage fcontext -a -t {} {}(.*)", file_type, path)
+    format!("fcontext 変更 + restorecon 実行  semanage fcontext -a -t '{}' '{}(/.*)?'", file_type, path)
 }
 pub fn opt_fcontext_desc(file_type: &str) -> String {
-    format!("このパスに {} を付与するルールを追加します。適用後 restorecon も実行してください。", file_type)
+    format!("このパスに {} を付与するルールを追加し、restorecon を自動実行します。", file_type)
 }
 pub fn opt_bool_temp_label(bool_name: &str) -> String {
     format!("Boolean を有効化（一時）  setsebool {} on", bool_name)
@@ -138,6 +150,8 @@ pub fn elapsed_secs(n: u64)  -> String { format!("{}秒前", n) }
 pub fn elapsed_mins(n: u64)  -> String { format!("{}分前", n) }
 pub fn elapsed_hours(n: u64) -> String { format!("{}時間前", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("{}日前", n) }
+pub const LABEL_FIRST_SEEN: &str = "初回発生";
+pub const LABEL_LAST_SEEN:  &str = "最終発生";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "警告: ロケールが UTF-8 ではない可能性があります（LANG={}）。\n\

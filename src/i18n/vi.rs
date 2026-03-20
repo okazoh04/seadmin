@@ -9,10 +9,11 @@
  */
 
 // ── Gợi ý chân trang ──────────────────────────────────────────────────────────
-pub const HINT_AVC_LIST:     &str = "↑↓/jk:Di chuyển  Enter:Chi tiết  /:Lọc  r:Tải lại  l:Nhật ký  q:Thoát";
+pub const HINT_AVC_LIST:     &str = "↑↓/jk:Di chuyển  Enter:Chi tiết  /:Lọc  r:Tải lại  m:Mô-đun  l:Nhật ký  q:Thoát";
 pub const HINT_AVC_DETAIL:   &str = "A-F:Chọn  Esc/←:Quay lại  Enter:Xác nhận";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Cuộn  Enter:Áp dụng  Esc:Hủy";
 pub const HINT_AUTH:         &str = "Enter:Thực thi  Esc:Hủy";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Di chuyển  d:Xóa  Esc:Quay lại";
 
 // ── Tiêu đề bảng ──────────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "Thời gian";
@@ -20,7 +21,9 @@ pub const COL_PROCESS:  &str = "Tiến trình";
 pub const COL_ACTION:   &str = "Hành động";
 pub const COL_TARGET:   &str = "Mục tiêu";
 pub const COL_COUNT:    &str = "Số lần";
-pub const COL_REMEDY:   &str = "Giải pháp";
+pub const COL_REMEDY:       &str = "Giải pháp";
+pub const COL_PRIORITY:     &str = "Ưu tiên";
+pub const COL_MODULE_NAME:  &str = "Mô-đun";
 
 // ── Trạng thái / thông báo ────────────────────────────────────────────────────
 pub const LOADING_MSG:      &str = " ⏳ Đang tải nhật ký AVC...";
@@ -70,6 +73,15 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Chính sách tùy chỉnh";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Từ chối truy cập  [Hôm nay]  Chưa giải quyết: {} / Tổng: {} ", unresolved, total)
 }
+pub fn module_list_title(count: usize) -> String {
+    format!(" Mô-đun chính sách  {} mô-đun ", count)
+}
+pub fn module_delete_desc(name: &str) -> String {
+    format!("Xóa mô-đun chính sách '{}'.", name)
+}
+pub fn module_deleted(name: &str) -> String {
+    format!("Mô-đun '{}' đã xóa.", name)
+}
 pub fn avc_loaded(count: usize) -> String {
     format!("Đã tải {} mục AVC", count)
 }
@@ -92,10 +104,10 @@ pub fn opt_restorecon_label(path: &str) -> String {
     format!("Sửa với restorecon  restorecon -Rv {}", path)
 }
 pub fn opt_fcontext_label(file_type: &str, path: &str) -> String {
-    format!("Thay đổi fcontext  semanage fcontext -a -t {} {}(.*)", file_type, path)
+    format!("Đổi fcontext + restorecon  semanage fcontext -a -t '{}' '{}(/.*)?'", file_type, path)
 }
 pub fn opt_fcontext_desc(file_type: &str) -> String {
-    format!("Thêm quy tắc để gán {} cho đường dẫn này. Chạy restorecon sau khi áp dụng.", file_type)
+    format!("Thêm quy tắc để gán {} cho đường dẫn này và tự động chạy restorecon.", file_type)
 }
 pub fn opt_bool_temp_label(bool_name: &str) -> String {
     format!("Bật Boolean (tạm thời)  setsebool {} on", bool_name)
@@ -138,6 +150,8 @@ pub fn elapsed_secs(n: u64)  -> String { format!("{} giây trước", n) }
 pub fn elapsed_mins(n: u64)  -> String { format!("{} phút trước", n) }
 pub fn elapsed_hours(n: u64) -> String { format!("{} giờ trước", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("{} ngày trước", n) }
+pub const LABEL_FIRST_SEEN: &str = "Lần đầu";
+pub const LABEL_LAST_SEEN:  &str = "Lần cuối";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "Cảnh báo: Locale có thể không phải UTF-8 (LANG={}).\n\

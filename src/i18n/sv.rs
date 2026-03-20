@@ -9,10 +9,11 @@
  */
 
 // ── Sidfotsledtrådar ──────────────────────────────────────────────────────────
-pub const HINT_AVC_LIST:     &str = "↑↓/jk:Flytta  Enter:Detaljer  /:Filtrera  r:Ladda om  l:Logg  q:Avsluta";
+pub const HINT_AVC_LIST:     &str = "↑↓/jk:Flytta  Enter:Detaljer  /:Filtrera  r:Ladda om  m:Moduler  l:Logg  q:Avsluta";
 pub const HINT_AVC_DETAIL:   &str = "A-F:Välj  Esc/←:Tillbaka  Enter:Bekräfta";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Rulla  Enter:Tillämpa  Esc:Avbryt";
 pub const HINT_AUTH:         &str = "Enter:Kör  Esc:Avbryt";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Flytta  d:Ta bort  Esc:Tillbaka";
 
 // ── Tabellrubriker ────────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "När";
@@ -20,7 +21,9 @@ pub const COL_PROCESS:  &str = "Process";
 pub const COL_ACTION:   &str = "Åtgärd";
 pub const COL_TARGET:   &str = "Mål";
 pub const COL_COUNT:    &str = "Antal";
-pub const COL_REMEDY:   &str = "Lösning";
+pub const COL_REMEDY:       &str = "Lösning";
+pub const COL_PRIORITY:     &str = "Prioritet";
+pub const COL_MODULE_NAME:  &str = "Modul";
 
 // ── Status / meddelanden ──────────────────────────────────────────────────────
 pub const LOADING_MSG:      &str = " ⏳ Laddar AVC-logg...";
@@ -70,6 +73,15 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Anpassad princip";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Åtkomstnekanden  [Idag]  Olösta: {} / Totalt: {} ", unresolved, total)
 }
+pub fn module_list_title(count: usize) -> String {
+    format!(" Principmoduler  {} moduler ", count)
+}
+pub fn module_delete_desc(name: &str) -> String {
+    format!("Ta bort principmodul '{}'.", name)
+}
+pub fn module_deleted(name: &str) -> String {
+    format!("Modul '{}' borttagen.", name)
+}
 pub fn avc_loaded(count: usize) -> String {
     format!("{} AVC-poster laddade", count)
 }
@@ -92,10 +104,10 @@ pub fn opt_restorecon_label(path: &str) -> String {
     format!("Reparera med restorecon  restorecon -Rv {}", path)
 }
 pub fn opt_fcontext_label(file_type: &str, path: &str) -> String {
-    format!("Ändra fcontext  semanage fcontext -a -t {} {}(.*)", file_type, path)
+    format!("Ändra fcontext + restorecon  semanage fcontext -a -t '{}' '{}(/.*)?'", file_type, path)
 }
 pub fn opt_fcontext_desc(file_type: &str) -> String {
-    format!("Lägg till regel för att tilldela {} till denna sökväg. Kör restorecon efter tillämpning.", file_type)
+    format!("Lägg till regel för att tilldela {} till denna sökväg och kör restorecon automatiskt.", file_type)
 }
 pub fn opt_bool_temp_label(bool_name: &str) -> String {
     format!("Aktivera Boolean (tillfälligt)  setsebool {} on", bool_name)
@@ -138,6 +150,8 @@ pub fn elapsed_secs(n: u64)  -> String { format!("för {}s sedan", n) }
 pub fn elapsed_mins(n: u64)  -> String { format!("för {}m sedan", n) }
 pub fn elapsed_hours(n: u64) -> String { format!("för {}h sedan", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("för {}d sedan", n) }
+pub const LABEL_FIRST_SEEN: &str = "Första förekomst";
+pub const LABEL_LAST_SEEN:  &str = "Senaste förekomst";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "Varning: Locale kanske inte är UTF-8 (LANG={}).\n\

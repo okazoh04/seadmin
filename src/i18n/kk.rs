@@ -9,10 +9,11 @@
  */
 
 // ── Төменгі бөліктегі кеңестер ────────────────────────────────────────────────
-pub const HINT_AVC_LIST:     &str = "↑↓/jk:Жылжыту  Enter:Толық  /:Сүзгі  r:Жаңарту  l:Журнал  q:Шығу";
+pub const HINT_AVC_LIST:     &str = "↑↓/jk:Жылжыту  Enter:Толық  /:Сүзгі  r:Жаңарту  m:Модульдер  l:Журнал  q:Шығу";
 pub const HINT_AVC_DETAIL:   &str = "A-F:Іс-әрекет  Esc/←:Артқа  Enter:Растау";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Айналдыру  Enter:Қолдану  Esc:Болдырмау";
 pub const HINT_AUTH:         &str = "Enter:Орындау  Esc:Болдырмау";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Жылжыту  d:Жою  Esc:Артқа";
 
 // ── Кесте тақырыптары ─────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "Уақыт";
@@ -20,7 +21,9 @@ pub const COL_PROCESS:  &str = "Процесс";
 pub const COL_ACTION:   &str = "Іс-әрекет";
 pub const COL_TARGET:   &str = "Нысан";
 pub const COL_COUNT:    &str = "Саны";
-pub const COL_REMEDY:   &str = "Шешім";
+pub const COL_REMEDY:       &str = "Шешім";
+pub const COL_PRIORITY:     &str = "Басымдық";
+pub const COL_MODULE_NAME:  &str = "Модуль атауы";
 
 // ── Күй / хабарлар ────────────────────────────────────────────────────────────
 pub const LOADING_MSG:      &str = " ⏳ AVC журналы жүктелуде...";
@@ -70,6 +73,15 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Теңшелген саясат";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Кіруден бас тарту  [Бүгін]  Өңделмеген: {} / Барлығы: {} ", unresolved, total)
 }
+pub fn module_list_title(count: usize) -> String {
+    format!(" Саясат модульдері  {} дана ", count)
+}
+pub fn module_delete_desc(name: &str) -> String {
+    format!("'{}' саясат модулін жою.", name)
+}
+pub fn module_deleted(name: &str) -> String {
+    format!("'{}' модулі жойылды.", name)
+}
 pub fn avc_loaded(count: usize) -> String {
     format!("{} AVC жазбасы жүктелді", count)
 }
@@ -92,10 +104,10 @@ pub fn opt_restorecon_label(path: &str) -> String {
     format!("restorecon арқылы қалпына келтіру  restorecon -Rv {}", path)
 }
 pub fn opt_fcontext_label(file_type: &str, path: &str) -> String {
-    format!("fcontext өзгерту  semanage fcontext -a -t {} {}(.*)", file_type, path)
+    format!("fcontext өзгерту + restorecon  semanage fcontext -a -t '{}' '{}(/.*)?'", file_type, path)
 }
 pub fn opt_fcontext_desc(file_type: &str) -> String {
-    format!("Осы жолға {} тағайындайтын ереже қосу. Қолданғаннан кейін restorecon іске қосыңыз.", file_type)
+    format!("Осы жолға {} тағайындайтын ереже қосып, restorecon автоматты іске қосылады.", file_type)
 }
 pub fn opt_bool_temp_label(bool_name: &str) -> String {
     format!("Boolean қосу (уақытша)  setsebool {} on", bool_name)
@@ -138,6 +150,8 @@ pub fn elapsed_secs(n: u64)  -> String { format!("{} сек бұрын", n) }
 pub fn elapsed_mins(n: u64)  -> String { format!("{} мин бұрын", n) }
 pub fn elapsed_hours(n: u64) -> String { format!("{} сағ бұрын", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("{} күн бұрын", n) }
+pub const LABEL_FIRST_SEEN: &str = "Алғаш пайда болу";
+pub const LABEL_LAST_SEEN:  &str = "Соңғы пайда болу";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "Ескерту: локаль UTF-8 болмауы мүмкін (LANG={}).\n\

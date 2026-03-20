@@ -9,10 +9,11 @@
  */
 
 // ── Footer hints ─────────────────────────────────────────────────────────────
-pub const HINT_AVC_LIST:     &str = "↑↓/jk:Move  Enter:Detail  /:Filter  r:Reload  l:Log  q:Quit";
+pub const HINT_AVC_LIST:     &str = "↑↓/jk:Move  Enter:Detail  /:Filter  r:Reload  m:Modules  l:Log  q:Quit";
 pub const HINT_AVC_DETAIL:   &str = "A-F:Select  Esc/←:Back  Enter:Confirm";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Scroll  Enter:Apply  Esc:Cancel";
 pub const HINT_AUTH:         &str = "Enter:Execute  Esc:Cancel";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Move  d:Delete  Esc:Back";
 
 // ── Table headers ─────────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "When";
@@ -20,7 +21,9 @@ pub const COL_PROCESS:  &str = "Process";
 pub const COL_ACTION:   &str = "Action";
 pub const COL_TARGET:   &str = "Target";
 pub const COL_COUNT:    &str = "Count";
-pub const COL_REMEDY:   &str = "Remedy";
+pub const COL_REMEDY:       &str = "Remedy";
+pub const COL_PRIORITY:     &str = "Priority";
+pub const COL_MODULE_NAME:  &str = "Module";
 
 // ── Status / messages ─────────────────────────────────────────────────────────
 pub const LOADING_MSG:      &str = " ⏳ Loading AVC log...";
@@ -70,6 +73,15 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Custom Policy";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Access Denials  [Today]  Unresolved: {} / Total: {} ", unresolved, total)
 }
+pub fn module_list_title(count: usize) -> String {
+    format!(" Policy Modules  {} modules ", count)
+}
+pub fn module_delete_desc(name: &str) -> String {
+    format!("Remove policy module '{}'.", name)
+}
+pub fn module_deleted(name: &str) -> String {
+    format!("Module '{}' removed.", name)
+}
 pub fn avc_loaded(count: usize) -> String {
     format!("Loaded {} AVC entries", count)
 }
@@ -92,10 +104,10 @@ pub fn opt_restorecon_label(path: &str) -> String {
     format!("Repair with restorecon  restorecon -Rv {}", path)
 }
 pub fn opt_fcontext_label(file_type: &str, path: &str) -> String {
-    format!("Change fcontext  semanage fcontext -a -t {} {}(.*)", file_type, path)
+    format!("Change fcontext + restorecon  semanage fcontext -a -t '{}' '{}(/.*)?'", file_type, path)
 }
 pub fn opt_fcontext_desc(file_type: &str) -> String {
-    format!("Add a rule to assign {} to this path. Run restorecon after applying.", file_type)
+    format!("Add a rule to assign {} to this path and run restorecon automatically.", file_type)
 }
 pub fn opt_bool_temp_label(bool_name: &str) -> String {
     format!("Enable Boolean (temporary)  setsebool {} on", bool_name)
@@ -138,6 +150,8 @@ pub fn elapsed_secs(n: u64)  -> String { format!("{}s ago", n) }
 pub fn elapsed_mins(n: u64)  -> String { format!("{}m ago", n) }
 pub fn elapsed_hours(n: u64) -> String { format!("{}h ago", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("{}d ago", n) }
+pub const LABEL_FIRST_SEEN: &str = "First occurrence";
+pub const LABEL_LAST_SEEN:  &str = "Last occurrence";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "Warning: Locale may not be UTF-8 (LANG={}).\n\

@@ -38,14 +38,17 @@ macro_rules! define_langs {
             pub fn hint_avc_detail(&self)    -> &'static str { match self { $( Lang::$variant => $module::HINT_AVC_DETAIL, )* } }
             pub fn hint_policy_review(&self) -> &'static str { match self { $( Lang::$variant => $module::HINT_POLICY_REVIEW, )* } }
             pub fn hint_auth(&self)          -> &'static str { match self { $( Lang::$variant => $module::HINT_AUTH, )* } }
+            pub fn hint_module_list(&self)   -> &'static str { match self { $( Lang::$variant => $module::HINT_MODULE_LIST, )* } }
 
             // ── テーブルヘッダー ──────────────────────────────────────────────
-            pub fn col_occurred(&self) -> &'static str { match self { $( Lang::$variant => $module::COL_OCCURRED, )* } }
-            pub fn col_process(&self)  -> &'static str { match self { $( Lang::$variant => $module::COL_PROCESS, )* } }
-            pub fn col_action(&self)   -> &'static str { match self { $( Lang::$variant => $module::COL_ACTION, )* } }
-            pub fn col_target(&self)   -> &'static str { match self { $( Lang::$variant => $module::COL_TARGET, )* } }
-            pub fn col_count(&self)    -> &'static str { match self { $( Lang::$variant => $module::COL_COUNT, )* } }
-            pub fn col_remedy(&self)   -> &'static str { match self { $( Lang::$variant => $module::COL_REMEDY, )* } }
+            pub fn col_occurred(&self)     -> &'static str { match self { $( Lang::$variant => $module::COL_OCCURRED, )* } }
+            pub fn col_process(&self)      -> &'static str { match self { $( Lang::$variant => $module::COL_PROCESS, )* } }
+            pub fn col_action(&self)       -> &'static str { match self { $( Lang::$variant => $module::COL_ACTION, )* } }
+            pub fn col_target(&self)       -> &'static str { match self { $( Lang::$variant => $module::COL_TARGET, )* } }
+            pub fn col_count(&self)        -> &'static str { match self { $( Lang::$variant => $module::COL_COUNT, )* } }
+            pub fn col_remedy(&self)       -> &'static str { match self { $( Lang::$variant => $module::COL_REMEDY, )* } }
+            pub fn col_priority(&self)     -> &'static str { match self { $( Lang::$variant => $module::COL_PRIORITY, )* } }
+            pub fn col_module_name(&self)  -> &'static str { match self { $( Lang::$variant => $module::COL_MODULE_NAME, )* } }
 
             // ── ステータス・メッセージ ────────────────────────────────────────
             pub fn loading_msg(&self)      -> &'static str { match self { $( Lang::$variant => $module::LOADING_MSG, )* } }
@@ -94,6 +97,15 @@ macro_rules! define_langs {
             // ── フォーマット文字列 ────────────────────────────────────────────
             pub fn avc_list_title(&self, unresolved: usize, total: usize) -> String {
                 match self { $( Lang::$variant => $module::avc_list_title(unresolved, total), )* }
+            }
+            pub fn module_list_title(&self, count: usize) -> String {
+                match self { $( Lang::$variant => $module::module_list_title(count), )* }
+            }
+            pub fn module_delete_desc(&self, name: &str) -> String {
+                match self { $( Lang::$variant => $module::module_delete_desc(name), )* }
+            }
+            pub fn module_deleted(&self, name: &str) -> String {
+                match self { $( Lang::$variant => $module::module_deleted(name), )* }
             }
             pub fn avc_loaded(&self, count: usize) -> String {
                 match self { $( Lang::$variant => $module::avc_loaded(count), )* }
@@ -165,6 +177,8 @@ macro_rules! define_langs {
             pub fn elapsed_mins(&self, n: u64)  -> String { match self { $( Lang::$variant => $module::elapsed_mins(n), )* } }
             pub fn elapsed_hours(&self, n: u64) -> String { match self { $( Lang::$variant => $module::elapsed_hours(n), )* } }
             pub fn elapsed_days(&self, n: u64)  -> String { match self { $( Lang::$variant => $module::elapsed_days(n), )* } }
+            pub fn label_first_seen(&self) -> &'static str { match self { $( Lang::$variant => $module::LABEL_FIRST_SEEN, )* } }
+            pub fn label_last_seen(&self)  -> &'static str { match self { $( Lang::$variant => $module::LABEL_LAST_SEEN, )* } }
             pub fn warn_locale_not_utf8(&self, lang_val: &str) -> String {
                 match self { $( Lang::$variant => $module::warn_locale_not_utf8(lang_val), )* }
             }

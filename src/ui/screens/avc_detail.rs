@@ -97,17 +97,17 @@ pub fn build_options(entry: &AvcEntry, lang: &Lang) -> Vec<RemOption> {
                 .to_string();
 
             if has_abs_path {
+                // semanage fcontext + restorecon の 2 ステップを sh -c で一括実行
+                // file_type は [a-z_]+ のみ（SELinux 型名）、path は / 始まりの絶対パス
+                // シングルクォートは path には実用上含まれないため、この形式で安全に展開できる
+                let sh_cmd = format!(
+                    "semanage fcontext -a -t '{}' '{}(/.*)?'; restorecon -Rv '{}'",
+                    file_type, path, path
+                );
                 opts.push(RemOption {
                     key: 'B',
                     label: lang.opt_fcontext_label(&file_type, &path),
-                    command: vec![
-                        "semanage".into(),
-                        "fcontext".into(),
-                        "-a".into(),
-                        "-t".into(),
-                        file_type.clone(),
-                        format!("{}(.*)", path),
-                    ],
+                    command: vec!["sh".into(), "-c".into(), sh_cmd],
                     description: lang.opt_fcontext_desc(&file_type),
                     needs_auth: true,
                     warning: false,
@@ -256,6 +256,13 @@ fn build_analysis_text(entry: &AvcEntry, lang: &Lang) -> Vec<String> {
     let mut lines = Vec::new();
     let domain = entry.scontext.split(':').nth(2).unwrap_or(&entry.scontext);
     lines.push(lang.analysis_denied(&entry.process, &entry.target, &entry.perm));
+    // first_seen / last_seen（複数回発生している場合のみ両方表示）
+    if entry.count > 1 {
+        let fmt = lang.datetime_format();
+        let first = entry.first_seen.format(fmt).to_string();
+        let last  = entry.last_seen.format(fmt).to_string();
+        lines.push(format!(" {}: {}  {}: {}", lang.label_first_seen(), first, lang.label_last_seen(), last));
+    }
     lines.push(String::new());
     match &entry.remedy {
         crate::selinux::avc::Remedy::PortContext => {
@@ -272,6 +279,9 @@ fn build_analysis_text(entry: &AvcEntry, lang: &Lang) -> Vec<String> {
         }
         crate::selinux::avc::Remedy::Boolean(b) => {
             lines.push(lang.analysis_bool_enable(b));
+            if let Some(desc) = &entry.bool_description {
+                lines.push(format!(" ℹ {}", desc));
+            }
         }
         _ => {
             lines.push(lang.analysis_domain_denied(domain, &entry.perm));

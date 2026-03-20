@@ -8,6 +8,7 @@
  * See the LICENSE file for details.
  */
 
+use crate::selinux::avc::Severity;
 use crate::ui::app::App;
 use ratatui::{
     layout::Constraint,
@@ -67,6 +68,19 @@ pub fn render(f: &mut Frame, area: ratatui::layout::Rect, app: &mut App) {
                 Cell::from(format!(" {}", e.id))
             };
 
+            // Remedy 列: 選択中・処理済みは行スタイルに任せ、それ以外は severity で色付け
+            let remedy_cell = if selected || e.resolved {
+                Cell::from(e.remedy.display_str(lang))
+            } else {
+                let color = match e.remedy.severity() {
+                    Severity::Low    => Color::Green,
+                    Severity::Medium => Color::Yellow,
+                    Severity::High   => Color::Red,
+                };
+                Cell::from(e.remedy.display_str(lang))
+                    .style(Style::default().fg(color))
+            };
+
             Row::new(vec![
                 id_cell,
                 Cell::from(e.elapsed_str(lang)),
@@ -74,7 +88,7 @@ pub fn render(f: &mut Frame, area: ratatui::layout::Rect, app: &mut App) {
                 Cell::from(e.perm.clone()),
                 Cell::from(truncate(&e.target, 24)),
                 Cell::from(e.count.to_string()),
-                Cell::from(e.remedy.display_str(lang)),
+                remedy_cell,
             ])
             .style(style)
             .height(1)

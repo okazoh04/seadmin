@@ -9,10 +9,11 @@
  */
 
 // ── Suggerimenti a piè di pagina ──────────────────────────────────────────────
-pub const HINT_AVC_LIST:     &str = "↑↓/jk:Sposta  Enter:Dettagli  /:Filtra  r:Ricarica  l:Log  q:Esci";
+pub const HINT_AVC_LIST:     &str = "↑↓/jk:Sposta  Enter:Dettagli  /:Filtra  r:Ricarica  m:Moduli  l:Log  q:Esci";
 pub const HINT_AVC_DETAIL:   &str = "A-F:Seleziona  Esc/←:Indietro  Enter:Conferma";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Scorri  Enter:Applica  Esc:Annulla";
 pub const HINT_AUTH:         &str = "Enter:Esegui  Esc:Annulla";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Sposta  d:Elimina  Esc:Indietro";
 
 // ── Intestazioni tabella ──────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "Quando";
@@ -20,7 +21,9 @@ pub const COL_PROCESS:  &str = "Processo";
 pub const COL_ACTION:   &str = "Azione";
 pub const COL_TARGET:   &str = "Destinazione";
 pub const COL_COUNT:    &str = "Conteggio";
-pub const COL_REMEDY:   &str = "Soluzione";
+pub const COL_REMEDY:       &str = "Soluzione";
+pub const COL_PRIORITY:     &str = "Priorità";
+pub const COL_MODULE_NAME:  &str = "Modulo";
 
 // ── Stato / messaggi ──────────────────────────────────────────────────────────
 pub const LOADING_MSG:      &str = " ⏳ Caricamento log AVC...";
@@ -70,6 +73,15 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Criterio personalizzato";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Rifiuti di accesso  [Oggi]  Non risolti: {} / Totale: {} ", unresolved, total)
 }
+pub fn module_list_title(count: usize) -> String {
+    format!(" Moduli criterio  {} moduli ", count)
+}
+pub fn module_delete_desc(name: &str) -> String {
+    format!("Rimuovere il modulo criterio '{}'.", name)
+}
+pub fn module_deleted(name: &str) -> String {
+    format!("Modulo '{}' rimosso.", name)
+}
 pub fn avc_loaded(count: usize) -> String {
     format!("{} voci AVC caricate", count)
 }
@@ -92,10 +104,10 @@ pub fn opt_restorecon_label(path: &str) -> String {
     format!("Ripara con restorecon  restorecon -Rv {}", path)
 }
 pub fn opt_fcontext_label(file_type: &str, path: &str) -> String {
-    format!("Cambia fcontext  semanage fcontext -a -t {} {}(.*)", file_type, path)
+    format!("Cambia fcontext + restorecon  semanage fcontext -a -t '{}' '{}(/.*)?'", file_type, path)
 }
 pub fn opt_fcontext_desc(file_type: &str) -> String {
-    format!("Aggiunge regola per assegnare {} a questo percorso. Esegui restorecon dopo l'applicazione.", file_type)
+    format!("Aggiunge regola per assegnare {} a questo percorso ed esegue restorecon automaticamente.", file_type)
 }
 pub fn opt_bool_temp_label(bool_name: &str) -> String {
     format!("Abilita Boolean (temporaneo)  setsebool {} on", bool_name)
@@ -138,6 +150,8 @@ pub fn elapsed_secs(n: u64)  -> String { format!("{}s fa", n) }
 pub fn elapsed_mins(n: u64)  -> String { format!("{}m fa", n) }
 pub fn elapsed_hours(n: u64) -> String { format!("{}h fa", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("{}g fa", n) }
+pub const LABEL_FIRST_SEEN: &str = "Prima occorrenza";
+pub const LABEL_LAST_SEEN:  &str = "Ultima occorrenza";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "Attenzione: Il locale potrebbe non essere UTF-8 (LANG={}).\n\

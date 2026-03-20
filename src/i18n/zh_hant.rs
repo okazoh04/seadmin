@@ -9,10 +9,11 @@
  */
 
 // ── 頁尾提示 ──────────────────────────────────────────────────────────────────
-pub const HINT_AVC_LIST:     &str = "↑↓/jk:移動  Enter:詳情  /:篩選  r:重新整理  l:日誌  q:退出";
+pub const HINT_AVC_LIST:     &str = "↑↓/jk:移動  Enter:詳情  /:篩選  r:重新整理  m:模組  l:日誌  q:退出";
 pub const HINT_AVC_DETAIL:   &str = "A-F:選擇處置  Esc/←:返回  Enter:確認";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:捲動  Enter:套用  Esc:取消";
 pub const HINT_AUTH:         &str = "Enter:執行  Esc:取消";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:移動  d:刪除  Esc:返回";
 
 // ── 表格標題 ──────────────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "時間";
@@ -20,7 +21,9 @@ pub const COL_PROCESS:  &str = "程序";
 pub const COL_ACTION:   &str = "操作";
 pub const COL_TARGET:   &str = "目標";
 pub const COL_COUNT:    &str = "次數";
-pub const COL_REMEDY:   &str = "修復方案";
+pub const COL_REMEDY:       &str = "修復方案";
+pub const COL_PRIORITY:     &str = "優先級";
+pub const COL_MODULE_NAME:  &str = "模組名";
 
 // ── 狀態 / 訊息 ───────────────────────────────────────────────────────────────
 pub const LOADING_MSG:      &str = " ⏳ 正在載入 AVC 日誌...";
@@ -70,6 +73,15 @@ pub const REMEDY_CUSTOM_POLICY: &str = "自訂原則";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" 存取拒絕清單  [今日]  未處理: {}條 / 共 {}條 ", unresolved, total)
 }
+pub fn module_list_title(count: usize) -> String {
+    format!(" 政策模組清單  {} 個 ", count)
+}
+pub fn module_delete_desc(name: &str) -> String {
+    format!("刪除政策模組 '{}'。", name)
+}
+pub fn module_deleted(name: &str) -> String {
+    format!("模組 '{}' 已刪除。", name)
+}
 pub fn avc_loaded(count: usize) -> String {
     format!("已載入 {} 個 AVC 項目", count)
 }
@@ -92,10 +104,10 @@ pub fn opt_restorecon_label(path: &str) -> String {
     format!("使用 restorecon 修復  restorecon -Rv {}", path)
 }
 pub fn opt_fcontext_label(file_type: &str, path: &str) -> String {
-    format!("變更 fcontext  semanage fcontext -a -t {} {}(.*)", file_type, path)
+    format!("變更 fcontext + restorecon  semanage fcontext -a -t '{}' '{}(/.*)?'", file_type, path)
 }
 pub fn opt_fcontext_desc(file_type: &str) -> String {
-    format!("新增將 {} 分配給此路徑的規則。套用後請同時執行 restorecon。", file_type)
+    format!("新增將 {} 分配給此路徑的規則，並自動執行 restorecon。", file_type)
 }
 pub fn opt_bool_temp_label(bool_name: &str) -> String {
     format!("啟用 Boolean（暫時）  setsebool {} on", bool_name)
@@ -138,6 +150,8 @@ pub fn elapsed_secs(n: u64)  -> String { format!("{}秒前", n) }
 pub fn elapsed_mins(n: u64)  -> String { format!("{}分前", n) }
 pub fn elapsed_hours(n: u64) -> String { format!("{}小時前", n) }
 pub fn elapsed_days(n: u64)  -> String { format!("{}天前", n) }
+pub const LABEL_FIRST_SEEN: &str = "首次發生";
+pub const LABEL_LAST_SEEN:  &str = "最後發生";
 pub fn warn_locale_not_utf8(lang_val: &str) -> String {
     format!(
         "警告：區域設定可能不是 UTF-8 (LANG={})。\n\
