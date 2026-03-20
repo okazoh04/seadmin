@@ -299,4 +299,30 @@ mod tests {
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].process, "httpd");
     }
+
+    #[test]
+    fn test_mark_resolved_and_update() {
+        let mut app = App::new();
+        let e1 = AvcEntry {
+            id: 1, first_seen: Local::now(), last_seen: Local::now(), count: 1,
+            process: "nginx".into(), perm: "read".into(), tclass: "file".into(),
+            scontext: "s:r:nginx_t:s0".into(), tcontext: "s:o:default_t:s0".into(), target: "/a".into(),
+            raw_lines: vec![], remedy: Remedy::Restorecon, resolved: false,
+            bool_description: None, syscall_name: None, errno_name: None,
+        };
+        app.avc_entries = vec![e1.clone()];
+
+        // 解決済みにマーク
+        app.mark_resolved(1);
+        assert!(app.avc_entries[0].resolved);
+        assert!(app.resolved_keys.contains("s:r:nginx_t:s0|s:o:default_t:s0|file|read"));
+
+        // 新しいエントリ一覧で更新（再取得をシミュレート）
+        let e1_new = AvcEntry { id: 10, resolved: false, ..e1 }; // ID が変わっても OK
+        app.update_avc_entries(vec![e1_new]);
+
+        // 解決済み状態が復元されていること
+        assert_eq!(app.avc_entries.len(), 1);
+        assert!(app.avc_entries[0].resolved);
+    }
 }

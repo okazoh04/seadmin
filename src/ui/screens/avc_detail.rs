@@ -314,3 +314,85 @@ pub fn select_option(entry: &AvcEntry, options: &[RemOption], cursor: usize) -> 
         prev_screen: Box::new(Screen::AvcDetail(entry.id)),
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::i18n::Lang;
+    use chrono::Local;
+
+    #[test]
+    fn test_build_options_port() {
+        let lang = Lang::English;
+        let entry = AvcEntry {
+            id: 1, first_seen: Local::now(), last_seen: Local::now(), count: 1,
+            process: "nginx".into(), perm: "name_bind".into(), tclass: "tcp_socket".into(),
+            scontext: "system_u:system_r:httpd_t:s0".into(),
+            tcontext: "system_u:object_r:http_port_t:s0".into(),
+            target: "8080".into(),
+            raw_lines: vec!["type=AVC ... dest=8080 ...".into()],
+            remedy: Remedy::PortContext,
+            resolved: false,
+            bool_description: None, syscall_name: None, errno_name: None,
+        };
+
+        let opts = build_options(&entry, &lang);
+        let port_opt = opts.iter().find(|o| o.key == 'A').expect("Option A missing");
+        assert_eq!(port_opt.command, vec!["semanage", "port", "-a", "-t", "http_port_t", "-p", "tcp", "8080"]);
+    }
+
+    #[test]
+    fn test_build_options_file_context() {
+        let lang = Lang::English;
+        let entry = AvcEntry {
+            id: 1, first_seen: Local::now(), last_seen: Local::now(), count: 1,
+            process: "httpd".into(), perm: "write".into(), tclass: "file".into(),
+            scontext: "system_u:system_r:httpd_t:s0".into(),
+            tcontext: "system_u:object_r:default_t:s0".into(),
+            target: "/var/www/html/upload".into(),
+            raw_lines: vec![],
+            remedy: Remedy::FileContext,
+            resolved: false,
+            bool_description: None, syscall_name: None, errno_name: None,
+        };
+
+        let opts = build_options(&entry, &lang);
+        
+        // Restorecon option
+        let res_opt = opts.iter().find(|o| o.key == 'A').expect("Option A missing");
+        assert_eq!(res_opt.command, vec!["restorecon", "-Rv", "/var/www/html/upload"]);
+
+        // Fcontext option
+        let fc_opt = opts.iter().find(|o| o.key == 'B').expect("Option B missing");
+        assert_eq!(fc_opt.command[0], "sh");
+        assert_eq!(fc_opt.command[1], "-c");
+        assert!(fc_opt.command[2].contains("semanage fcontext -a -t 'default_t' '/var/www/html/upload(/.*)?'"));
+        assert!(fc_opt.command[2].contains("restorecon -Rv '/var/www/html/upload'"));
+    }
+
+    #[test]
+    fn test_build_options_boolean() {
+        let lang = Lang::English;
+        let entry = AvcEntry {
+            id: 1, first_seen: Local::now(), last_seen: Local::now(), count: 1,
+            process: "httpd".into(), perm: "name_connect".into(), tclass: "tcp_socket".into(),
+            scontext: "system_u:system_r:httpd_t:s0".into(),
+            tcontext: "system_u:object_r:http_port_t:s0".into(),
+            target: "80".into(),
+            raw_lines: vec![],
+            remedy: Remedy::Boolean("httpd_can_network_connect".into()),
+            resolved: false,
+            bool_description: None, syscall_name: None, errno_name: None,
+        };
+
+        let opts = build_options(&entry, &lang);
+        
+        // Temporary boolean
+        let temp_opt = opts.iter().find(|o| o.key == 'A').expect("Option A missing");
+        assert_eq!(temp_opt.command, vec!["setsebool", "httpd_can_network_connect", "on"]);
+
+        // Persistent boolean
+        let perm_opt = opts.iter().find(|o| o.key == 'B').expect("Option B missing");
+        assert_eq!(perm_opt.command, vec!["setsebool", "-P", "httpd_can_network_connect", "on"]);
+    }
+}

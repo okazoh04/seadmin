@@ -415,6 +415,20 @@ pub fn diagnose_remedy(
 ) -> Remedy {
     let ttype = tcontext.split(':').nth(2).unwrap_or("");
 
+    // Boolean マップ（代表的なものだけ列挙）
+    // ポート追加よりも優先度高（具体的なサービス設定のため）
+    let boolean_map: &[(&str, &str, &str)] = &[
+        ("httpd_t", "name_connect", "httpd_can_network_connect"),
+        ("httpd_t", "write",        "httpd_anon_write"),
+        ("ftpd_t",  "read",         "ftp_home_dir"),
+        ("samba_t", "read",         "samba_enable_home_dirs"),
+    ];
+    for (sctx_frag, p, bool_name) in boolean_map {
+        if scontext.contains(sctx_frag) && perm.contains(p) {
+            return Remedy::Boolean(bool_name.to_string());
+        }
+    }
+
     // ポートコンテキスト
     if matches!(tclass, "tcp_socket" | "udp_socket" | "rawip_socket")
         && matches!(perm, "name_bind" | "name_connect")
@@ -443,23 +457,8 @@ pub fn diagnose_remedy(
         };
     }
 
-    // Boolean マップ（代表的なものだけ列挙）
-    let boolean_map: &[(&str, &str, &str)] = &[
-        ("httpd_t", "name_connect", "httpd_can_network_connect"),
-        ("httpd_t", "write",        "httpd_anon_write"),
-        ("ftpd_t",  "read",         "ftp_home_dir"),
-        ("samba_t", "read",         "samba_enable_home_dirs"),
-    ];
-    for (sctx_frag, p, bool_name) in boolean_map {
-        if scontext.contains(sctx_frag) && perm.contains(p) {
-            return Remedy::Boolean(bool_name.to_string());
-        }
-    }
-
     Remedy::CustomPolicy
 }
-
-/// x86_64 システムコール番号をシンボル名に変換する
 fn syscall_name_from_nr(nr: u32) -> Option<&'static str> {
     Some(match nr {
         0   => "read",          1   => "write",         2   => "open",
@@ -604,5 +603,36 @@ type=SYSCALL msg=audit(1710000000.123:456): arch=c000003e syscall=2 success=no e
             diagnose_remedy("getattr", "process", "s:r:httpd_t:s0", "s:r:kernel_t:s0", ""),
             Remedy::CustomPolicy
         );
+        // Boolean
+        assert_eq!(
+            diagnose_remedy("name_connect", "tcp_socket", "s:r:httpd_t:s0", "s:r:http_port_t:s0", ""),
+            Remedy::Boolean("httpd_can_network_connect".into())
+        );
+    }
+
+    #[test]
+    fn test_parse_ausearch_output_aggregation() {
+        let raw = r#"type=AVC msg=audit(1710000000.100:1): avc:  denied  { read } for  pid=1 comm="nginx" path="/a" scontext=s:r:t:s0 tcontext=s:o:default_t:s0 tclass=file
+----
+type=AVC msg=audit(1710000000.200:2): avc:  denied  { read } for  pid=2 comm="nginx" path="/a" scontext=s:r:t:s0 tcontext=s:o:default_t:s0 tclass=file"#;
+        
+        let entries = parse_ausearch_output(raw);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].count, 2);
+        assert_eq!(entries[0].process, "nginx");
+    }
+
+    #[test]
+    fn test_path_mapping_across_blocks() {
+        // block1: path="/usr/bin/ls" がある (type=PATH)
+        // block2: name="ls" しかない (avc: denied)
+        let raw = r#"type=AVC msg=audit(1710000000.100:1): avc:  denied  { execute } for  comm="bash" name="/usr/bin/ls" scontext=s:r:t:s0 tcontext=s:o:t:s0 tclass=file
+type=PATH msg=audit(1710000000.100:1): item=0 name="/usr/bin/ls"
+----
+type=AVC msg=audit(1710000000.200:2): avc:  denied  { execute } for  comm="bash" name="ls" scontext=s:r:t:s0 tcontext=s:o:t:s0 tclass=file"#;
+        
+        let entries = parse_ausearch_output(raw);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].target, "/usr/bin/ls");
     }
 }
