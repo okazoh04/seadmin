@@ -9,6 +9,7 @@
  */
 
 use anyhow::Result;
+use std::io::Write;
 use std::process::Stdio;
 use tokio::process::Command;
 
@@ -19,14 +20,18 @@ pub async fn ausearch_avc() -> Result<String> {
     // stderr に "permission denied" 系のメッセージがあるときだけ権限エラーと判定する
     let args = ["-m", "AVC,USER_AVC,SELINUX_ERR", "-ts", "today"];
 
-    let out = Command::new("ausearch").args(args).output().await;
+    let out = Command::new("ausearch")
+        .env("LC_ALL", "C")
+        .args(args)
+        .output()
+        .await;
 
     match out {
         Ok(o) => {
             let stderr = String::from_utf8_lossy(&o.stderr);
             // 権限エラー以外は stdout を返す（<no matches> も正常応答）
-            // OS が出力する "Permission denied" / "許可がありません" の両方を検出する
-            if !stderr.contains("許可がありません") && !stderr.contains("Permission denied") {
+            // LC_ALL=C なので英語のみチェック
+            if !stderr.to_lowercase().contains("permission denied") {
                 return Ok(String::from_utf8_lossy(&o.stdout).to_string());
             }
         }
@@ -35,14 +40,15 @@ pub async fn ausearch_avc() -> Result<String> {
 
     // sudo にフォールバック（パスワード不要の場合のみ）
     let out = Command::new("sudo")
+        .env("LC_ALL", "C")
         .args(["-n", "ausearch"])
         .args(args)
         .output()
         .await?;
 
     let stderr = String::from_utf8_lossy(&out.stderr);
-    // sudo が "password is required" / "パスワード" を含む場合は権限不足と判定
-    if stderr.contains("password is required") || stderr.contains("パスワード") {
+    // sudo が "password is required" を含む場合は権限不足と判定
+    if stderr.contains("password is required") {
         let lang = crate::i18n::detect_lang();
         Err(anyhow::anyhow!("{}", lang.err_audit_no_perm()))
     } else {
@@ -52,13 +58,19 @@ pub async fn ausearch_avc() -> Result<String> {
 
 /// getenforce の結果を返す
 pub async fn getenforce() -> Result<String> {
-    let out = Command::new("getenforce").output().await?;
+    let out = Command::new("getenforce")
+        .env("LC_ALL", "C")
+        .output()
+        .await?;
     Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
 
 /// ホスト名を返す
 pub async fn hostname() -> Result<String> {
-    let out = Command::new("hostname").output().await?;
+    let out = Command::new("hostname")
+        .env("LC_ALL", "C")
+        .output()
+        .await?;
     Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
 
@@ -75,6 +87,7 @@ pub async fn audit2why(avc_lines: &[String]) -> Option<(String, String)> {
     use tokio::io::AsyncWriteExt;
 
     let mut child = tokio::process::Command::new("audit2allow")
+        .env("LC_ALL", "C")
         .args(["-w"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -157,6 +170,7 @@ fn extract_boolean_name(line: &str) -> Option<String> {
 /// sepolicy が存在しない場合は None を返す
 pub async fn sepolicy_bool_desc(bool_name: &str) -> Option<String> {
     let out = Command::new("sepolicy")
+        .env("LC_ALL", "C")
         .args(["booleans", "-b", bool_name])
         .output()
         .await
@@ -175,14 +189,19 @@ pub async fn sepolicy_bool_desc(bool_name: &str) -> Option<String> {
 }
 
 /// audit2allow -M でポリシーを生成し、(.te の内容, .pp ファイルパス) を返す
-/// .pp ファイルは /tmp に置いたまま返す。呼び出し元が semodule -i 後に削除すること。
+/// .pp ファイルは /tmp にランダムな名前で作成して返す。呼び出し元が semodule -i 後に削除すること。
 pub async fn audit2allow_generate(avc_lines: &[String], module_name: &str) -> Result<(String, String)> {
     use tokio::io::AsyncWriteExt;
+    use tempfile::tempdir;
 
-    let tmp = std::path::Path::new("/tmp");
+    // 予測不可能な一時ディレクトリを作成
+    let tmp_dir = tempdir()?;
+    let tmp_path = tmp_dir.path();
+
     let mut child = Command::new("audit2allow")
+        .env("LC_ALL", "C")
         .args(["-M", module_name])
-        .current_dir(tmp)
+        .current_dir(tmp_path)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -201,16 +220,26 @@ pub async fn audit2allow_generate(avc_lines: &[String], module_name: &str) -> Re
         ));
     }
 
-    let te_path = tmp.join(format!("{}.te", module_name));
-    let pp_path = tmp.join(format!("{}.pp", module_name));
+    let te_path = tmp_path.join(format!("{}.te", module_name));
+    let pp_path_src = tmp_path.join(format!("{}.pp", module_name));
 
     let te = tokio::fs::read_to_string(&te_path).await.unwrap_or_else(|_| {
         String::from_utf8_lossy(&output.stdout).to_string()
     });
-    let _ = tokio::fs::remove_file(&te_path).await;
-    // .pp は semodule -i 後に呼び出し元が削除する
 
-    Ok((te, pp_path.to_string_lossy().to_string()))
+    // .pp ファイルを安全な一時ファイル名に移動する
+    // /tmp 直下にランダムな名前で作成し、永続化（keep）させる
+    let (mut temp_file, dest_pp_path) = tempfile::Builder::new()
+        .prefix("seadmin-")
+        .suffix(".pp")
+        .tempfile_in("/tmp")?
+        .keep()?;
+
+    let pp_content = tokio::fs::read(&pp_path_src).await?;
+    temp_file.write_all(&pp_content)?;
+    temp_file.flush()?;
+
+    Ok((te, dest_pp_path.to_string_lossy().to_string()))
 }
 
 /// ポリシーモジュール情報
@@ -224,6 +253,7 @@ pub struct PolicyModule {
 /// 出力形式: "priority  name  type" (例: "400  base  pp")
 pub async fn semodule_list_full() -> Result<Vec<PolicyModule>> {
     let out = Command::new("semodule")
+        .env("LC_ALL", "C")
         .args(["-lfull"])
         .output()
         .await?;

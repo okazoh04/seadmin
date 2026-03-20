@@ -26,6 +26,7 @@ pub async fn run_with_sudo(
 
     // sudo -S -- <args>  (-k を外してセッション内キャッシュを活用)
     let mut child = Command::new("sudo")
+        .env("LC_ALL", "C")
         .args(["-S", "--"])
         .args(args)
         .stdin(Stdio::piped())
@@ -47,7 +48,7 @@ pub async fn run_with_sudo(
         Ok(SudoResult::Ok)
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-        // 認証失敗の判定
+        // 認証失敗の判定 (LC_ALL=C なので英語のみチェック)
         if stderr.contains("incorrect password")
             || stderr.contains("authentication failure")
             || stderr.contains("Sorry, try again")
