@@ -115,29 +115,26 @@ pub async fn audit2why(avc_lines: &[String]) -> Option<(String, String)> {
 ///   "target context label"                      → BADTCON  (別表現)
 ///   "MLS"                                       → CONSTRAINT
 fn parse_audit2why_output(text: &str) -> Option<(String, String)> {
-    // "Was caused by:" 以降の行を解析
-    let mut after_cause = false;
+    // boolean 名の抽出（優先度高）
     for line in text.lines() {
-        let l = line.trim();
-        if l.starts_with("Was caused by:") {
-            after_cause = true;
-            continue;
-        }
-        if !after_cause {
-            continue;
-        }
-        // BOOLEAN: "The boolean X was set incorrectly."
-        //          "you must turn on the X boolean"
-        if let Some(bool_name) = extract_boolean_name(l) {
+        if let Some(bool_name) = extract_boolean_name(line) {
             return Some(("BOOLEAN".to_string(), bool_name));
         }
-        if l.contains("Missing type enforcement") || l.contains("allow rule") {
+    }
+
+    // その他の理由（複数の行にまたがる可能性があるため、行単位でキーワードスキャン）
+    for line in text.lines() {
+        let l = line.to_lowercase();
+        // TERULE: ルール不足
+        if l.contains("missing type enforcement") || (l.contains("allow") && l.contains("rule")) {
             return Some(("TERULE".to_string(), String::new()));
         }
-        if l.contains("Incorrect Target Context Label") || l.contains("target context label") {
+        // BADTCON: ラベル不正
+        if l.contains("incorrect target context label") || l.contains("target context label") {
             return Some(("BADTCON".to_string(), String::new()));
         }
-        if l.contains("MLS") || l.contains("MCS") {
+        // CONSTRAINT: 制約
+        if l.contains("mls") || l.contains("mcs") || l.contains("constraint") {
             return Some(("CONSTRAINT".to_string(), String::new()));
         }
     }

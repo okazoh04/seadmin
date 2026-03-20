@@ -83,12 +83,15 @@ async fn main() -> Result<()> {
 async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Result<()> {
     let mut app = App::new();
 
-    // ログファイルを初期化
-    let log_path = {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
-        std::path::PathBuf::from(home)
-            .join(".local/share/seadmin/seadmin.log")
-    };
+    // ログファイルを初期化 (XDG Base Directory 準拠)
+    let log_path = dirs::data_dir()
+        .map(|p| p.join("seadmin/seadmin.log"))
+        .unwrap_or_else(|| {
+            // フォールバック: HOME 環境変数が取れない場合は /tmp を使用
+            let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string());
+            std::path::PathBuf::from(home).join(".local/share/seadmin/seadmin.log")
+        });
+
     if let Some(dir) = log_path.parent() {
         let _ = std::fs::create_dir_all(dir);
     }
@@ -827,13 +830,24 @@ fn check_env() {
     check_deps();
 }
 
-/// コマンドが PATH 上に存在するか確認する
+/// コマンドが PATH 上、または標準的な管理者パスに存在するか確認する
 fn is_in_path(cmd: &str) -> bool {
-    std::env::var_os("PATH")
-        .map(|path| {
-            std::env::split_paths(&path).any(|dir| dir.join(cmd).is_file())
-        })
-        .unwrap_or(false)
+    // 1. PATH 環境変数をチェック
+    if let Some(path) = std::env::var_os("PATH") {
+        if std::env::split_paths(&path).any(|dir| dir.join(cmd).is_file()) {
+            return true;
+        }
+    }
+
+    // 2. 標準的な管理者パスを直接チェック（一般ユーザーの PATH に含まれていない場合があるため）
+    let admin_paths = ["/usr/sbin", "/sbin", "/usr/local/sbin"];
+    for p in admin_paths {
+        if std::path::Path::new(p).join(cmd).is_file() {
+            return true;
+        }
+    }
+
+    false
 }
 
 /// 依存コマンドの存在確認。不足があれば警告・エラーを出力し、

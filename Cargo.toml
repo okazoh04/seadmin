@@ -1,6 +1,6 @@
 [package]
 name = "seadmin"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2024"
 description = "SELinux TUI 管理ツール"
 license = "GPL-3.0-only"
@@ -20,6 +20,7 @@ serde_json = "1"
 chrono = "0.4"
 anyhow = "1"
 tempfile = "3"
+dirs = "5"
 
 [profile.release]
 strip = true
