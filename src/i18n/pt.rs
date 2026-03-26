@@ -51,10 +51,10 @@ pub const POLICY_REVIEW_TITLE: &str = " Revisão de política (Enter:Aplicar  Es
 pub const POLICY_APPLY_DESC:   &str = "Aplicar o módulo de política gerado ao sistema.";
 
 // ── Opções de solução (estáticas) ─────────────────────────────────────────────
-pub const OPT_RESTORECON_DESC:     &str = "Restaurar o contexto de arquivo padrão (reparar rótulos perdidos).";
+pub const OPT_RESTORECON_DESC:     &str = "Tente isso primeiro. Restaura o contexto de arquivo padrão (repara rótulos perdidos).";
 pub const OPT_CUSTOM_POLICY_LABEL: &str = "Gerar e aplicar módulo de política personalizado (audit2allow)";
-pub const OPT_CUSTOM_POLICY_DESC:  &str = "Gerar automaticamente uma política com audit2allow. Revise antes de aplicar.";
-pub const OPT_PERMISSIVE_DESC:     &str = "Desativar negações temporariamente. Reduz a segurança; use apenas para investigação.";
+pub const OPT_CUSTOM_POLICY_DESC:  &str = "Gerar política automaticamente com audit2allow. Se conhecer o caminho, pressione P primeiro.";
+pub const OPT_PERMISSIVE_DESC:     &str = "⚠ Desativa todas as negações do domínio. Grande risco de segurança. Use apenas para investigação.";
 pub const OPT_IGNORE_LABEL:        &str = "Não fazer nada / Adicionar à lista de ignorados";
 pub const OPT_IGNORE_DESC:         &str = "Adicionar esta entrada à lista de ignorados (somente dentro da ferramenta).";
 
@@ -62,6 +62,12 @@ pub const OPT_IGNORE_DESC:         &str = "Adicionar esta entrada à lista de ig
 pub const ANALYSIS_FCONTEXT_NONSTANDARD: &str = " Caminho não padrão requer adição de uma regra fcontext.";
 pub const ANALYSIS_RESTORECON_FIX:       &str = " Executar restorecon para restaurar o contexto padrão pode resolver isso.";
 pub const ANALYSIS_CUSTOMPOLICY_FIX:     &str = " Uma política personalizada precisa ser gerada com audit2allow.";
+pub const ANALYSIS_PATH_UNKNOWN_HINT: &str = " * Caminho desconhecido. Pressione P para especificar o caminho e ver a melhor solução.";
+pub const PATH_INPUT_TITLE:  &str = " Inserir caminho do diretório";
+pub const PATH_INPUT_PROMPT: &str = " Digite o caminho absoluto (ex: /var/log/myapp)";
+pub const PATH_INPUT_HINT:   &str = " Enter: Confirmar  Esc: Cancelar";
+pub const OPT_PATH_INPUT_LABEL: &str = "Inserir caminho absoluto para habilitar restorecon/fcontext";
+pub const OPT_PATH_INPUT_DESC:  &str = "Caminho desconhecido — opções A/B não disponíveis. Insira o caminho absoluto para exibir as etapas de correção de rótulo (restorecon / semanage fcontext).";
 
 // ── Nomes de Remedy ───────────────────────────────────────────────────────────
 pub const REMEDY_PORT_CONTEXT:  &str = "Contexto de porta";
@@ -138,6 +144,9 @@ pub fn analysis_write_denied(target: &str) -> String {
 }
 pub fn analysis_label_stripped(target: &str) -> String {
     format!(" O rótulo em {} pode ter sido removido.", target)
+}
+pub fn analysis_dir_label_check(dir: &str) -> String {
+    format!(" Verifique o rótulo do diretório com: ls -dZ {}. Se estiver mal rotulado, tente restorecon primeiro.", dir)
 }
 pub fn analysis_bool_enable(b: &str) -> String {
     format!(" Habilitar o Boolean {} pode resolver isso.", b)

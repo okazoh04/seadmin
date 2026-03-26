@@ -90,6 +90,8 @@ pub struct AvcEntry {
     pub syscall_name: Option<String>,
     /// SYSCALL レコードの exit 値から変換した errno 名（例: "EACCES"）
     pub errno_name: Option<String>,
+    /// ユーザーが手動入力したパス（target が絶対パスでない場合の補完）
+    pub override_path: Option<String>,
 }
 
 impl AvcEntry {
@@ -267,6 +269,7 @@ fn parse_block(
         bool_description: None,
         syscall_name,
         errno_name,
+        override_path: None,
     })
 }
 
@@ -274,9 +277,12 @@ fn parse_block(
 ///
 /// 解決の優先順位:
 ///   1. AVC 行の path= / dest= / name= フィールド（引用符・16進対応）
-///   2. 同ブロックの type=PATH レコードの name= フィールド（全レコードを走査）
-///   3. デバイス名ヒューリスティック（ptmx, pts 番号など）
-///   4. フォールバック: AVC 行から得た raw 値
+///   2. tclass=dir の場合: type=PATH レコードの nametype=PARENT（ディレクトリ本体）
+///      add_name 等では AVC の name= はファイル名なので PARENT を優先する
+///   3. 同ブロックの type=PATH レコードの name= フィールド（全レコードを走査）
+///   4. デバイス名ヒューリスティック（ptmx, pts 番号など）
+///   5. 他ブロックで判明した「ファイル名 → 絶対パス」対応表を参照
+///   6. フォールバック: AVC 行から得た raw 値
 fn resolve_target(
     avc_line: &str,
     block: &str,
@@ -294,7 +300,25 @@ fn resolve_target(
         return raw;
     }
 
-    // ステップ 2: 同ブロックの type=PATH レコードを全件走査して絶対パスを探す
+    // ステップ 2: tclass=dir → nametype=PARENT のレコードがディレクトリ本体
+    //   add_name / write / remove_name の AVC では name= が操作対象のファイル名になるため、
+    //   PARENT レコードを先に探してディレクトリの絶対パスを取得する
+    if tclass == "dir" {
+        for line in block.lines().filter(|l| l.contains("type=PATH")) {
+            let is_parent = extract_field(line, "nametype=")
+                .map(|t| t == "PARENT")
+                .unwrap_or(false);
+            if is_parent {
+                if let Some(p) = extract_field(line, "name=") {
+                    if p.starts_with('/') {
+                        return p;
+                    }
+                }
+            }
+        }
+    }
+
+    // ステップ 3: 同ブロックの type=PATH レコードを全件走査して絶対パスを探す
     //   複数の PATH レコードがある場合（exec + interpreter など）は
     //   絶対パスを持つ最初のものを採用する
     for line in block.lines().filter(|l| l.contains("type=PATH")) {
@@ -305,19 +329,19 @@ fn resolve_target(
         }
     }
 
-    // ステップ 3: デバイス名ヒューリスティック（ptmx, pts 番号など）
+    // ステップ 4: デバイス名ヒューリスティック（ptmx, pts 番号など）
     if let Some(p) = device_path_heuristic(&raw, tclass) {
         return p;
     }
 
-    // ステップ 4: 他ブロックで判明した「ファイル名 → 絶対パス」対応表を参照
+    // ステップ 5: 他ブロックで判明した「ファイル名 → 絶対パス」対応表を参照
     //   execute 拒否など PATH レコードが無いブロックでも、同名ファイルが
     //   他ブロックで解決済みであれば絶対パスを補完できる
     if let Some(abs) = path_map.get(&raw) {
         return abs.clone();
     }
 
-    // ステップ 5: フォールバック
+    // ステップ 6: フォールバック
     raw
 }
 
@@ -415,16 +439,49 @@ pub fn diagnose_remedy(
 ) -> Remedy {
     let ttype = tcontext.split(':').nth(2).unwrap_or("");
 
-    // Boolean マップ（代表的なものだけ列挙）
-    // ポート追加よりも優先度高（具体的なサービス設定のため）
-    let boolean_map: &[(&str, &str, &str)] = &[
-        ("httpd_t", "name_connect", "httpd_can_network_connect"),
-        ("httpd_t", "write",        "httpd_anon_write"),
-        ("ftpd_t",  "read",         "ftp_home_dir"),
-        ("samba_t", "read",         "samba_enable_home_dirs"),
+    // Boolean マップ
+    // (scontext fragment, ttype fragment, perm fragment, boolean name)
+    // sctx_frag / ttype_frag / perm_frag が "" の場合はその条件をスキップ
+    // 具体的なエントリを先に置くこと（最初にマッチしたものが採用される）
+    let boolean_map: &[(&str, &str, &str, &str)] = &[
+        // ── httpd ─────────────────────────────────────────────────────────
+        ("httpd_t", "mysqld_port_t",       "name_connect", "httpd_can_network_connect_db"),
+        ("httpd_t", "postgresql_port_t",   "name_connect", "httpd_can_network_connect_db"),
+        ("httpd_t", "",                    "name_connect", "httpd_can_network_connect"),
+        ("httpd_t", "public_content_rw_t", "write",        "httpd_anon_write"),
+        ("httpd_t", "user_home_t",         "",             "httpd_enable_homedirs"),
+        ("httpd_t", "staff_home_t",        "",             "httpd_enable_homedirs"),
+        ("httpd_t", "admin_home_t",        "",             "httpd_enable_homedirs"),
+        ("httpd_t", "nfs_t",               "",             "httpd_use_nfs"),
+        ("httpd_t", "cifs_t",              "",             "httpd_use_cifs"),
+        // ── ftpd ──────────────────────────────────────────────────────────
+        ("ftpd_t",  "public_content_rw_t", "write",        "ftpd_anon_write"),
+        ("ftpd_t",  "user_home_t",         "",             "ftp_home_dir"),
+        ("ftpd_t",  "staff_home_t",        "",             "ftp_home_dir"),
+        ("ftpd_t",  "nfs_t",               "",             "ftpd_use_nfs"),
+        ("ftpd_t",  "cifs_t",              "",             "ftpd_use_cifs"),
+        // ── samba ─────────────────────────────────────────────────────────
+        ("smbd_t",  "user_home_t",         "",             "samba_enable_home_dirs"),
+        ("smbd_t",  "staff_home_t",        "",             "samba_enable_home_dirs"),
+        ("smbd_t",  "nfs_t",               "",             "samba_use_nfs"),
+        // ── logrotate ─────────────────────────────────────────────────────
+        ("logrotate_t", "nfs_t",           "",             "logrotate_use_nfs"),
+        ("logrotate_t", "cifs_t",          "",             "logrotate_use_cifs"),
+        // ── virt / KVM ────────────────────────────────────────────────────
+        ("virtd_t",  "nfs_t",              "",             "virt_use_nfs"),
+        ("virtd_t",  "cifs_t",             "",             "virt_use_samba"),
+        ("svirt_t",  "nfs_t",              "",             "virt_use_nfs"),
+        ("svirt_t",  "cifs_t",             "",             "virt_use_samba"),
+        // ── postfix ───────────────────────────────────────────────────────
+        ("postfix_local_t", "mail_spool_t", "write",       "postfix_local_write_mail_spool"),
+        // ── named / BIND ──────────────────────────────────────────────────
+        ("named_t", "named_zone_t",        "write",        "named_write_master_zones"),
     ];
-    for (sctx_frag, p, bool_name) in boolean_map {
-        if scontext.contains(sctx_frag) && perm.contains(p) {
+    for (sctx_frag, ttype_frag, p, bool_name) in boolean_map {
+        let sctx_ok  = sctx_frag.is_empty()  || scontext.contains(*sctx_frag);
+        let ttype_ok = ttype_frag.is_empty() || ttype.contains(*ttype_frag);
+        let perm_ok  = p.is_empty()          || perm.contains(*p);
+        if sctx_ok && ttype_ok && perm_ok {
             return Remedy::Boolean(bool_name.to_string());
         }
     }
@@ -634,5 +691,36 @@ type=AVC msg=audit(1710000000.200:2): avc:  denied  { execute } for  comm="bash"
         let entries = parse_ausearch_output(raw);
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].target, "/usr/bin/ls");
+    }
+
+    #[test]
+    fn test_resolve_dir_target_from_parent_record() {
+        // logrotate が add_name を試みたケース
+        // AVC の name= はファイル名、PARENT レコードにディレクトリの絶対パスがある
+        let block = r#"type=AVC msg=audit(1710000000.100:1): avc:  denied  { add_name } for  pid=1234 comm="logrotate" name="tsunagapi.log-20260326" dev="sda1" ino=100 scontext=system_u:system_r:logrotate_t:s0 tcontext=system_u:object_r:var_t:s0 tclass=dir permissive=0
+type=SYSCALL msg=audit(1710000000.100:1): arch=c000003e syscall=257 success=no exit=-13 comm="logrotate" exe="/usr/sbin/logrotate" subj=system_u:system_r:logrotate_t:s0
+type=PATH msg=audit(1710000000.100:1): item=0 name="/var/log/tsunagapi" inode=100 dev=fd:00 mode=040755 nametype=PARENT
+type=PATH msg=audit(1710000000.100:1): item=1 name="tsunagapi.log-20260326" inode=0 dev=00:00 mode=0100644 nametype=CREATE"#;
+        let path_map = std::collections::HashMap::new();
+        let entry = parse_block(block, 1, &path_map).unwrap();
+
+        // ディレクトリの絶対パスが取得できていること
+        assert_eq!(entry.target, "/var/log/tsunagapi");
+        assert_eq!(entry.tclass, "dir");
+        // var_t は汎用型なので FileContext
+        assert_eq!(entry.remedy, Remedy::FileContext);
+    }
+
+    #[test]
+    fn test_resolve_dir_target_no_parent_record() {
+        // PATH レコードに PARENT がない場合はフォールバック動作（リグレッションなし）
+        let block = r#"type=AVC msg=audit(1710000000.100:1): avc:  denied  { add_name } for  pid=1234 comm="logrotate" name="app.log-20260326" dev="sda1" ino=100 scontext=system_u:system_r:logrotate_t:s0 tcontext=system_u:object_r:var_t:s0 tclass=dir permissive=0
+type=PATH msg=audit(1710000000.100:1): item=0 name="app.log-20260326" inode=0 dev=00:00 mode=0100644 nametype=CREATE"#;
+        let path_map = std::collections::HashMap::new();
+        let entry = parse_block(block, 1, &path_map).unwrap();
+
+        // 絶対パスは取れないがクラッシュしないこと
+        assert_eq!(entry.tclass, "dir");
+        assert!(!entry.target.starts_with('/'));
     }
 }

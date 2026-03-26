@@ -51,10 +51,10 @@ pub const POLICY_REVIEW_TITLE: &str = " Revisione criterio (Enter:Applica  Esc:A
 pub const POLICY_APPLY_DESC:   &str = "Applica il modulo criterio generato al sistema.";
 
 // ── Opzioni soluzione (statiche) ──────────────────────────────────────────────
-pub const OPT_RESTORECON_DESC:     &str = "Ripristina il contesto file predefinito (ripara etichette perse).";
+pub const OPT_RESTORECON_DESC:     &str = "Provare prima questo. Ripristina il contesto file predefinito (ripara etichette perse).";
 pub const OPT_CUSTOM_POLICY_LABEL: &str = "Genera e applica modulo criterio personalizzato (audit2allow)";
-pub const OPT_CUSTOM_POLICY_DESC:  &str = "Genera automaticamente un criterio con audit2allow. Controlla prima di applicare.";
-pub const OPT_PERMISSIVE_DESC:     &str = "Disabilita temporaneamente i rifiuti. Riduce la sicurezza; solo per indagini.";
+pub const OPT_CUSTOM_POLICY_DESC:  &str = "Genera automaticamente un criterio con audit2allow. Se il percorso è noto, premere prima P.";
+pub const OPT_PERMISSIVE_DESC:     &str = "⚠ Disabilita tutti i rifiuti del dominio. Rischio di sicurezza elevato. Solo per indagini.";
 pub const OPT_IGNORE_LABEL:        &str = "Non fare nulla / Aggiungi alla lista ignorati";
 pub const OPT_IGNORE_DESC:         &str = "Aggiungi questa voce alla lista ignorati (solo nello strumento).";
 
@@ -62,6 +62,12 @@ pub const OPT_IGNORE_DESC:         &str = "Aggiungi questa voce alla lista ignor
 pub const ANALYSIS_FCONTEXT_NONSTANDARD: &str = " Il percorso non standard richiede l'aggiunta di una regola fcontext.";
 pub const ANALYSIS_RESTORECON_FIX:       &str = " Eseguire restorecon per ripristinare il contesto predefinito può risolvere il problema.";
 pub const ANALYSIS_CUSTOMPOLICY_FIX:     &str = " È necessario generare un criterio personalizzato con audit2allow.";
+pub const ANALYSIS_PATH_UNKNOWN_HINT: &str = " * Percorso sconosciuto. Premere P per specificare il percorso e vedere la soluzione ottimale.";
+pub const PATH_INPUT_TITLE:  &str = " Inserire il percorso della directory";
+pub const PATH_INPUT_PROMPT: &str = " Inserire il percorso assoluto (es: /var/log/myapp)";
+pub const PATH_INPUT_HINT:   &str = " Enter: Conferma  Esc: Annulla";
+pub const OPT_PATH_INPUT_LABEL: &str = "Inserire percorso assoluto per abilitare restorecon/fcontext";
+pub const OPT_PATH_INPUT_DESC:  &str = "Percorso sconosciuto — opzioni A/B non disponibili. Inserire il percorso assoluto per visualizzare i passi di correzione etichetta (restorecon / semanage fcontext).";
 
 // ── Nomi Remedy ───────────────────────────────────────────────────────────────
 pub const REMEDY_PORT_CONTEXT:  &str = "Contesto porta";
@@ -138,6 +144,9 @@ pub fn analysis_write_denied(target: &str) -> String {
 }
 pub fn analysis_label_stripped(target: &str) -> String {
     format!(" L'etichetta su {} potrebbe essere stata rimossa.", target)
+}
+pub fn analysis_dir_label_check(dir: &str) -> String {
+    format!(" Verificare l'etichetta della directory con: ls -dZ {}. Se errata, provare prima restorecon.", dir)
 }
 pub fn analysis_bool_enable(b: &str) -> String {
     format!(" Abilitare il Boolean {} potrebbe risolvere il problema.", b)

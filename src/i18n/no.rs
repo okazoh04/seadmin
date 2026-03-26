@@ -51,10 +51,10 @@ pub const POLICY_REVIEW_TITLE: &str = " Policygjennomgang (Enter:Bruk  Esc:Avbry
 pub const POLICY_APPLY_DESC:   &str = "Bruk den genererte policymodulen på systemet.";
 
 // ── Løsningsalternativer (statiske) ──────────────────────────────────────────
-pub const OPT_RESTORECON_DESC:     &str = "Gjenopprett standard filkontekst (reparer tapte etiketter).";
+pub const OPT_RESTORECON_DESC:     &str = "Prøv dette først. Gjenopprett standard filkontekst (reparer tapte etiketter).";
 pub const OPT_CUSTOM_POLICY_LABEL: &str = "Generer og bruk tilpasset policymodul (audit2allow)";
-pub const OPT_CUSTOM_POLICY_DESC:  &str = "Generer policy automatisk med audit2allow. Gjennomgå før bruk.";
-pub const OPT_PERMISSIVE_DESC:     &str = "Deaktiver nektelser midlertidig. Reduserer sikkerheten; bruk kun til undersøkelse.";
+pub const OPT_CUSTOM_POLICY_DESC:  &str = "Generer policy automatisk med audit2allow. Hvis søkestien er kjent, trykk P først.";
+pub const OPT_PERMISSIVE_DESC:     &str = "⚠ Deaktiverer alle nektelser for domenet. Stor sikkerhetsrisiko. Bruk kun til undersøkelse.";
 pub const OPT_IGNORE_LABEL:        &str = "Ikke gjør noe / Legg til ignoreringsliste";
 pub const OPT_IGNORE_DESC:         &str = "Legg til denne oppføringen i ignoreringslisten (kun inne i verktøyet).";
 
@@ -62,6 +62,12 @@ pub const OPT_IGNORE_DESC:         &str = "Legg til denne oppføringen i ignorer
 pub const ANALYSIS_FCONTEXT_NONSTANDARD: &str = " Ikke-standard sti krever tillegg av en fcontext-regel.";
 pub const ANALYSIS_RESTORECON_FIX:       &str = " Å kjøre restorecon for å gjenopprette standardkonteksten kan løse dette.";
 pub const ANALYSIS_CUSTOMPOLICY_FIX:     &str = " En tilpasset policy må genereres med audit2allow.";
+pub const ANALYSIS_PATH_UNKNOWN_HINT: &str = " * Søkesti ukjent. Trykk P for å angi søkestien og se den beste løsningen.";
+pub const PATH_INPUT_TITLE:  &str = " Angi katalogsøkesti";
+pub const PATH_INPUT_PROMPT: &str = " Skriv inn absolutt søkesti (f.eks. /var/log/myapp)";
+pub const PATH_INPUT_HINT:   &str = " Enter: Bekreft  Esc: Avbryt";
+pub const OPT_PATH_INPUT_LABEL: &str = "Angi absolutt sti for å aktivere restorecon/fcontext";
+pub const OPT_PATH_INPUT_DESC:  &str = "Sti ukjent — alternativene A/B kan ikke vises. Angi absolutt sti for å vise trinn for etikettkorrigering (restorecon / semanage fcontext).";
 
 // ── Remedy-visningsnavn ───────────────────────────────────────────────────────
 pub const REMEDY_PORT_CONTEXT:  &str = "Portkontekst";
@@ -138,6 +144,9 @@ pub fn analysis_write_denied(target: &str) -> String {
 }
 pub fn analysis_label_stripped(target: &str) -> String {
     format!(" Etiketten på {} kan ha blitt fjernet.", target)
+}
+pub fn analysis_dir_label_check(dir: &str) -> String {
+    format!(" Sjekk katalogens etikett med: ls -dZ {}. Hvis feil etikett, prøv restorecon først.", dir)
 }
 pub fn analysis_bool_enable(b: &str) -> String {
     format!(" Å aktivere Boolean {} kan løse dette.", b)

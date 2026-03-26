@@ -51,10 +51,10 @@ pub const POLICY_REVIEW_TITLE: &str = " Проверка политики (Enter
 pub const POLICY_APPLY_DESC:   &str = "Применить сгенерированный модуль политики к системе.";
 
 // ── Варианты решения (статические) ───────────────────────────────────────────
-pub const OPT_RESTORECON_DESC:     &str = "Восстановить контекст файла по умолчанию (исправить потерянные метки).";
+pub const OPT_RESTORECON_DESC:     &str = "Попробуйте сначала. Восстанавливает контекст файла по умолчанию (исправляет потерянные метки).";
 pub const OPT_CUSTOM_POLICY_LABEL: &str = "Создать и применить пользовательский модуль политики (audit2allow)";
-pub const OPT_CUSTOM_POLICY_DESC:  &str = "Автоматически создать политику с audit2allow. Проверьте перед применением.";
-pub const OPT_PERMISSIVE_DESC:     &str = "Временно отключить запреты. Снижает безопасность; используйте только для диагностики.";
+pub const OPT_CUSTOM_POLICY_DESC:  &str = "Автоматически создать политику с audit2allow. Если путь известен, сначала нажмите P.";
+pub const OPT_PERMISSIVE_DESC:     &str = "⚠ Отключает все запреты для домена. Значительное снижение безопасности. Только для диагностики.";
 pub const OPT_IGNORE_LABEL:        &str = "Ничего не делать / Добавить в список игнорирования";
 pub const OPT_IGNORE_DESC:         &str = "Добавить запись в список игнорирования (только внутри инструмента).";
 
@@ -62,6 +62,12 @@ pub const OPT_IGNORE_DESC:         &str = "Добавить запись в сп
 pub const ANALYSIS_FCONTEXT_NONSTANDARD: &str = " Нестандартный путь требует добавления правила fcontext.";
 pub const ANALYSIS_RESTORECON_FIX:       &str = " Запуск restorecon для восстановления контекста по умолчанию может решить проблему.";
 pub const ANALYSIS_CUSTOMPOLICY_FIX:     &str = " Необходимо создать пользовательскую политику с помощью audit2allow.";
+pub const ANALYSIS_PATH_UNKNOWN_HINT: &str = " * Путь неизвестен. Нажмите P, чтобы указать путь и увидеть оптимальное решение.";
+pub const PATH_INPUT_TITLE:  &str = " Введите путь к каталогу";
+pub const PATH_INPUT_PROMPT: &str = " Введите абсолютный путь (например: /var/log/myapp)";
+pub const PATH_INPUT_HINT:   &str = " Enter: Подтвердить  Esc: Отмена";
+pub const OPT_PATH_INPUT_LABEL: &str = "Ввести абсолютный путь для включения restorecon/fcontext";
+pub const OPT_PATH_INPUT_DESC:  &str = "Путь неизвестен — варианты A/B недоступны. Введите абсолютный путь, чтобы отобразить шаги исправления меток (restorecon / semanage fcontext).";
 
 // ── Отображаемые имена Remedy ─────────────────────────────────────────────────
 pub const REMEDY_PORT_CONTEXT:  &str = "Добавить порт";
@@ -138,6 +144,9 @@ pub fn analysis_write_denied(target: &str) -> String {
 }
 pub fn analysis_label_stripped(target: &str) -> String {
     format!(" Метка на {} могла быть удалена.", target)
+}
+pub fn analysis_dir_label_check(dir: &str) -> String {
+    format!(" Проверьте метку каталога командой: ls -dZ {}. Если метка неверна — сначала попробуйте restorecon.", dir)
 }
 pub fn analysis_bool_enable(b: &str) -> String {
     format!(" Включение Boolean {} может решить проблему.", b)

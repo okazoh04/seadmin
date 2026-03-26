@@ -51,10 +51,10 @@ pub const POLICY_REVIEW_TITLE: &str = " ポリシー内容確認（Enter:適用 
 pub const POLICY_APPLY_DESC:   &str = "生成したポリシーモジュールをシステムに適用します。";
 
 // ── 対処オプション（静的） ────────────────────────────────────────────────────
-pub const OPT_RESTORECON_DESC:   &str = "デフォルトのファイルコンテキストに戻します（ラベル剥がれの修復）。";
+pub const OPT_RESTORECON_DESC:   &str = "まず試してください。ラベルが剥がれた場合はこれで解決します。";
 pub const OPT_CUSTOM_POLICY_LABEL: &str = "カスタムポリシーモジュールを生成・適用（audit2allow）";
-pub const OPT_CUSTOM_POLICY_DESC:  &str = "audit2allow でポリシーを自動生成します。内容をレビューしてから適用できます。";
-pub const OPT_PERMISSIVE_DESC:   &str = "拒否を一時的に無効化します。セキュリティが低下するため調査目的に限定してください。";
+pub const OPT_CUSTOM_POLICY_DESC:  &str = "audit2allow でポリシーを自動生成します。パスが判明している場合は先に P キーを試してください。";
+pub const OPT_PERMISSIVE_DESC:   &str = "⚠ ドメイン全体の拒否を無効化します。セキュリティが大幅に低下します。調査目的の一時措置のみ。";
 pub const OPT_IGNORE_LABEL:      &str = "何もしない / 無視リストに追加";
 pub const OPT_IGNORE_DESC:       &str = "このエントリを無視リストに追加します（ツール内のみ）。";
 
@@ -62,7 +62,12 @@ pub const OPT_IGNORE_DESC:       &str = "このエントリを無視リストに
 pub const ANALYSIS_FCONTEXT_NONSTANDARD: &str = " 非標準パスのため fcontext ルールの追加が必要です。";
 pub const ANALYSIS_RESTORECON_FIX:       &str = " restorecon でデフォルトコンテキストに戻すことで解決できます。";
 pub const ANALYSIS_CUSTOMPOLICY_FIX:     &str = " audit2allow でカスタムポリシーを生成する必要があります。";
-
+pub const ANALYSIS_PATH_UNKNOWN_HINT: &str = " ※ パスが不明です。P キーでパスを指定すると最善策が表示されます。";
+pub const PATH_INPUT_TITLE:  &str = " ディレクトリパスを入力";
+pub const PATH_INPUT_PROMPT: &str = " 絶対パスを入力してください（例: /var/log/myapp）";
+pub const PATH_INPUT_HINT:   &str = " Enter: 確定  Esc: キャンセル";
+pub const OPT_PATH_INPUT_LABEL: &str = "絶対パスを入力して restorecon/fcontext を有効化";
+pub const OPT_PATH_INPUT_DESC:  &str = "パスが不明なため A・B の修正手順を表示できません。絶対パスを入力すると、ラベル修正（restorecon / semanage fcontext）の対処方法が表示されます。";
 // ── Remedy 表示名 ────────────────────────────────────────────────────────────
 pub const REMEDY_PORT_CONTEXT:  &str = "ポート追加";
 pub const REMEDY_FILE_CONTEXT:  &str = "fcontext変更";
@@ -138,6 +143,9 @@ pub fn analysis_write_denied(target: &str) -> String {
 }
 pub fn analysis_label_stripped(target: &str) -> String {
     format!(" {} のラベルが剥がれている可能性があります。", target)
+}
+pub fn analysis_dir_label_check(dir: &str) -> String {
+    format!(" ls -dZ {} でラベルを確認してください。不正なら restorecon を先に試してください。", dir)
 }
 pub fn analysis_bool_enable(b: &str) -> String {
     format!(" {} Boolean を有効にすることで解決できる可能性があります。", b)

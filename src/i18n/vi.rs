@@ -51,10 +51,10 @@ pub const POLICY_REVIEW_TITLE: &str = " Xem xét chính sách (Enter:Áp dụng 
 pub const POLICY_APPLY_DESC:   &str = "Áp dụng mô-đun chính sách đã tạo vào hệ thống.";
 
 // ── Tùy chọn giải pháp (tĩnh) ────────────────────────────────────────────────
-pub const OPT_RESTORECON_DESC:     &str = "Khôi phục ngữ cảnh tệp mặc định (sửa nhãn bị mất).";
+pub const OPT_RESTORECON_DESC:     &str = "Thử cái này trước. Khôi phục ngữ cảnh tệp mặc định (sửa nhãn bị mất).";
 pub const OPT_CUSTOM_POLICY_LABEL: &str = "Tạo và áp dụng mô-đun chính sách tùy chỉnh (audit2allow)";
-pub const OPT_CUSTOM_POLICY_DESC:  &str = "Tự động tạo chính sách với audit2allow. Xem xét trước khi áp dụng.";
-pub const OPT_PERMISSIVE_DESC:     &str = "Tạm thời vô hiệu hóa từ chối. Giảm bảo mật; chỉ dùng để điều tra.";
+pub const OPT_CUSTOM_POLICY_DESC:  &str = "Tự động tạo chính sách với audit2allow. Nếu biết đường dẫn, hãy nhấn P trước.";
+pub const OPT_PERMISSIVE_DESC:     &str = "⚠ Vô hiệu hóa tất cả từ chối của domain. Rủi ro bảo mật lớn. Chỉ dùng để điều tra.";
 pub const OPT_IGNORE_LABEL:        &str = "Không làm gì / Thêm vào danh sách bỏ qua";
 pub const OPT_IGNORE_DESC:         &str = "Thêm mục này vào danh sách bỏ qua (chỉ trong công cụ).";
 
@@ -62,6 +62,12 @@ pub const OPT_IGNORE_DESC:         &str = "Thêm mục này vào danh sách bỏ
 pub const ANALYSIS_FCONTEXT_NONSTANDARD: &str = " Đường dẫn không chuẩn yêu cầu thêm quy tắc fcontext.";
 pub const ANALYSIS_RESTORECON_FIX:       &str = " Chạy restorecon để khôi phục ngữ cảnh mặc định có thể giải quyết vấn đề.";
 pub const ANALYSIS_CUSTOMPOLICY_FIX:     &str = " Cần tạo chính sách tùy chỉnh bằng audit2allow.";
+pub const ANALYSIS_PATH_UNKNOWN_HINT: &str = " * Không biết đường dẫn. Nhấn P để chỉ định đường dẫn và xem cách sửa tốt nhất.";
+pub const PATH_INPUT_TITLE:  &str = " Nhập đường dẫn thư mục";
+pub const PATH_INPUT_PROMPT: &str = " Nhập đường dẫn tuyệt đối (vd: /var/log/myapp)";
+pub const PATH_INPUT_HINT:   &str = " Enter: Xác nhận  Esc: Hủy";
+pub const OPT_PATH_INPUT_LABEL: &str = "Nhập đường dẫn tuyệt đối để kích hoạt restorecon/fcontext";
+pub const OPT_PATH_INPUT_DESC:  &str = "Đường dẫn chưa biết — không thể hiển thị tùy chọn A/B. Nhập đường dẫn tuyệt đối để xem các bước sửa nhãn (restorecon / semanage fcontext).";
 
 // ── Tên hiển thị Remedy ───────────────────────────────────────────────────────
 pub const REMEDY_PORT_CONTEXT:  &str = "Thêm cổng";
@@ -138,6 +144,9 @@ pub fn analysis_write_denied(target: &str) -> String {
 }
 pub fn analysis_label_stripped(target: &str) -> String {
     format!(" Nhãn trên {} có thể đã bị xóa.", target)
+}
+pub fn analysis_dir_label_check(dir: &str) -> String {
+    format!(" Kiểm tra nhãn thư mục bằng: ls -dZ {}. Nếu nhãn sai, hãy thử restorecon trước.", dir)
 }
 pub fn analysis_bool_enable(b: &str) -> String {
     format!(" Bật Boolean {} có thể giải quyết vấn đề này.", b)

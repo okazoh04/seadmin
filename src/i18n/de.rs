@@ -51,10 +51,10 @@ pub const POLICY_REVIEW_TITLE: &str = " Richtlinienüberprüfung (Enter:Anwenden
 pub const POLICY_APPLY_DESC:   &str = "Das generierte Richtlinienmodul auf das System anwenden.";
 
 // ── Lösungsoptionen (statisch) ────────────────────────────────────────────────
-pub const OPT_RESTORECON_DESC:     &str = "Standard-Dateikontext wiederherstellen (verlorene Bezeichnungen reparieren).";
+pub const OPT_RESTORECON_DESC:     &str = "Zuerst versuchen. Standard-Dateikontext wiederherstellen (verlorene Bezeichnungen reparieren).";
 pub const OPT_CUSTOM_POLICY_LABEL: &str = "Benutzerdefiniertes Richtlinienmodul generieren und anwenden (audit2allow)";
-pub const OPT_CUSTOM_POLICY_DESC:  &str = "Richtlinie automatisch mit audit2allow generieren. Vor der Anwendung überprüfen.";
-pub const OPT_PERMISSIVE_DESC:     &str = "Verweigerungen vorübergehend deaktivieren. Reduziert die Sicherheit; nur zur Untersuchung.";
+pub const OPT_CUSTOM_POLICY_DESC:  &str = "Richtlinie automatisch mit audit2allow generieren. Falls Pfad bekannt, zuerst P drücken.";
+pub const OPT_PERMISSIVE_DESC:     &str = "⚠ Deaktiviert alle Verweigerungen für die Domain. Hohes Sicherheitsrisiko. Nur zur Untersuchung.";
 pub const OPT_IGNORE_LABEL:        &str = "Nichts tun / Zur Ignorierliste hinzufügen";
 pub const OPT_IGNORE_DESC:         &str = "Diesen Eintrag zur Ignorierliste hinzufügen (nur intern im Tool).";
 
@@ -62,6 +62,12 @@ pub const OPT_IGNORE_DESC:         &str = "Diesen Eintrag zur Ignorierliste hinz
 pub const ANALYSIS_FCONTEXT_NONSTANDARD: &str = " Nicht-standardmäßiger Pfad erfordert das Hinzufügen einer fcontext-Regel.";
 pub const ANALYSIS_RESTORECON_FIX:       &str = " Das Ausführen von restorecon zur Wiederherstellung des Standardkontexts kann dies beheben.";
 pub const ANALYSIS_CUSTOMPOLICY_FIX:     &str = " Eine benutzerdefinierte Richtlinie muss mit audit2allow generiert werden.";
+pub const ANALYSIS_PATH_UNKNOWN_HINT: &str = " * Pfad unbekannt. P drücken, um den Pfad anzugeben und die beste Lösung zu sehen.";
+pub const PATH_INPUT_TITLE:  &str = " Verzeichnispfad eingeben";
+pub const PATH_INPUT_PROMPT: &str = " Absoluten Pfad eingeben (z. B. /var/log/myapp)";
+pub const PATH_INPUT_HINT:   &str = " Enter: Bestätigen  Esc: Abbrechen";
+pub const OPT_PATH_INPUT_LABEL: &str = "Absoluten Pfad eingeben, um restorecon/fcontext zu aktivieren";
+pub const OPT_PATH_INPUT_DESC:  &str = "Pfad unbekannt — Optionen A/B nicht verfügbar. Geben Sie den absoluten Pfad ein, um Schritte zur Label-Korrektur anzuzeigen (restorecon / semanage fcontext).";
 
 // ── Remedy-Anzeigenamen ───────────────────────────────────────────────────────
 pub const REMEDY_PORT_CONTEXT:  &str = "Port-Kontext";
@@ -138,6 +144,9 @@ pub fn analysis_write_denied(target: &str) -> String {
 }
 pub fn analysis_label_stripped(target: &str) -> String {
     format!(" Die Bezeichnung auf {} wurde möglicherweise entfernt.", target)
+}
+pub fn analysis_dir_label_check(dir: &str) -> String {
+    format!(" Überprüfen Sie das Label des Verzeichnisses mit: ls -dZ {}. Bei falschem Label zuerst restorecon versuchen.", dir)
 }
 pub fn analysis_bool_enable(b: &str) -> String {
     format!(" Das Aktivieren des Boolean {} kann dies beheben.", b)

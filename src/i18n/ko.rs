@@ -51,10 +51,10 @@ pub const POLICY_REVIEW_TITLE: &str = " 정책 검토 (Enter:적용  Esc:취소)
 pub const POLICY_APPLY_DESC:   &str = "생성된 정책 모듈을 시스템에 적용합니다.";
 
 // ── 해결 옵션 (정적) ──────────────────────────────────────────────────────────
-pub const OPT_RESTORECON_DESC:     &str = "기본 파일 컨텍스트를 복원합니다 (레이블 손상 수정).";
+pub const OPT_RESTORECON_DESC:     &str = "먼저 시도해 보세요. 기본 파일 컨텍스트를 복원합니다 (레이블 손상 수정).";
 pub const OPT_CUSTOM_POLICY_LABEL: &str = "커스텀 정책 모듈 생성 및 적용 (audit2allow)";
-pub const OPT_CUSTOM_POLICY_DESC:  &str = "audit2allow로 정책을 자동 생성합니다. 적용 전 검토하세요.";
-pub const OPT_PERMISSIVE_DESC:     &str = "거부를 일시적으로 비활성화합니다. 보안이 낮아지므로 조사 목적으로만 사용하세요.";
+pub const OPT_CUSTOM_POLICY_DESC:  &str = "audit2allow로 정책을 자동 생성합니다. 경로를 알고 있다면 먼저 P 키를 시도해 보세요.";
+pub const OPT_PERMISSIVE_DESC:     &str = "⚠ 이 도메인의 모든 거부를 비활성화합니다. 보안이 크게 저하됩니다. 조사 목적으로만 사용하세요.";
 pub const OPT_IGNORE_LABEL:        &str = "무시 / 무시 목록에 추가";
 pub const OPT_IGNORE_DESC:         &str = "이 항목을 무시 목록에 추가합니다 (도구 내부에서만 적용).";
 
@@ -62,6 +62,12 @@ pub const OPT_IGNORE_DESC:         &str = "이 항목을 무시 목록에 추가
 pub const ANALYSIS_FCONTEXT_NONSTANDARD: &str = " 비표준 경로이므로 fcontext 규칙 추가가 필요합니다.";
 pub const ANALYSIS_RESTORECON_FIX:       &str = " restorecon으로 기본 컨텍스트를 복원하면 해결될 수 있습니다.";
 pub const ANALYSIS_CUSTOMPOLICY_FIX:     &str = " audit2allow로 커스텀 정책을 생성해야 합니다.";
+pub const ANALYSIS_PATH_UNKNOWN_HINT: &str = " ※ 경로를 알 수 없습니다. P 키를 눌러 경로를 지정하면 최적의 수정 방법이 표시됩니다.";
+pub const PATH_INPUT_TITLE:  &str = " 디렉터리 경로 입력";
+pub const PATH_INPUT_PROMPT: &str = " 절대 경로를 입력하세요 (예: /var/log/myapp)";
+pub const PATH_INPUT_HINT:   &str = " Enter: 확인  Esc: 취소";
+pub const OPT_PATH_INPUT_LABEL: &str = "절대 경로를 입력하여 restorecon/fcontext 활성화";
+pub const OPT_PATH_INPUT_DESC:  &str = "경로를 알 수 없어 A/B 수정 옵션을 표시할 수 없습니다. 절대 경로를 입력하면 레이블 수정 단계(restorecon / semanage fcontext)가 표시됩니다.";
 
 // ── Remedy 표시 이름 ──────────────────────────────────────────────────────────
 pub const REMEDY_PORT_CONTEXT:  &str = "포트 컨텍스트";
@@ -138,6 +144,9 @@ pub fn analysis_write_denied(target: &str) -> String {
 }
 pub fn analysis_label_stripped(target: &str) -> String {
     format!(" {}의 레이블이 손실되었을 수 있습니다.", target)
+}
+pub fn analysis_dir_label_check(dir: &str) -> String {
+    format!(" ls -dZ {} 로 디렉터리 레이블을 확인하세요. 레이블이 잘못되었다면 restorecon을 먼저 시도하세요.", dir)
 }
 pub fn analysis_bool_enable(b: &str) -> String {
     format!(" {} Boolean을 활성화하면 해결될 수 있습니다.", b)

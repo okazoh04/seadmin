@@ -75,41 +75,54 @@ pub fn build_options(entry: &AvcEntry, lang: &Lang) -> Vec<RemOption> {
             }
         }
         Remedy::FileContext | Remedy::Restorecon => {
-            let path = entry.target.trim_matches('"').to_string();
-            let has_abs_path = path.starts_with('/');
+            // override_path が指定されていればそれを優先、なければ target を使用
+            let raw_path = entry
+                .override_path
+                .as_deref()
+                .unwrap_or(&entry.target)
+                .trim_matches('"')
+                .to_string();
+            let has_abs_path = raw_path.starts_with('/');
 
             if has_abs_path {
                 opts.push(RemOption {
                     key: 'A',
-                    label: lang.opt_restorecon_label(&path),
-                    command: vec!["restorecon".into(), "-Rv".into(), path.clone()],
+                    label: lang.opt_restorecon_label(&raw_path),
+                    command: vec!["restorecon".into(), "-Rv".into(), raw_path.clone()],
                     description: lang.opt_restorecon_desc().to_string(),
                     needs_auth: true,
                     warning: false,
                 });
             }
 
-            let file_type = entry
-                .tcontext
-                .split(':')
-                .nth(2)
-                .unwrap_or("unlabeled_t")
-                .to_string();
+            // tcontext の型は「現在の誤ったラベル」なので fcontext には使わない。
+            // パスと scontext から適切な型を推測する。
+            let (file_type, _certain) = suggest_fcontext_type(&raw_path, &entry.scontext);
 
             if has_abs_path {
                 // semanage fcontext + restorecon の 2 ステップを sh -c で一括実行
-                // file_type は [a-z_]+ のみ（SELinux 型名）、path は / 始まりの絶対パス
-                // シングルクォートは path には実用上含まれないため、この形式で安全に展開できる
                 let sh_cmd = format!(
                     "semanage fcontext -a -t '{}' '{}(/.*)?'; restorecon -Rv '{}'",
-                    file_type, path, path
+                    file_type, raw_path, raw_path
                 );
                 opts.push(RemOption {
                     key: 'B',
-                    label: lang.opt_fcontext_label(&file_type, &path),
+                    label: lang.opt_fcontext_label(file_type, &raw_path),
                     command: vec!["sh".into(), "-c".into(), sh_cmd],
-                    description: lang.opt_fcontext_desc(&file_type),
+                    description: lang.opt_fcontext_desc(file_type),
                     needs_auth: true,
+                    warning: false,
+                });
+            }
+
+            // パスが不明な場合は P オプションを表示して最善策への誘導を促す
+            if !has_abs_path {
+                opts.push(RemOption {
+                    key: 'P',
+                    label: lang.opt_path_input_label().to_string(),
+                    command: vec![],
+                    description: lang.opt_path_input_desc().to_string(),
+                    needs_auth: false,
                     warning: false,
                 });
             }
@@ -168,6 +181,32 @@ pub fn build_options(entry: &AvcEntry, lang: &Lang) -> Vec<RemOption> {
     });
 
     opts
+}
+
+/// FileContext remedy で semanage fcontext に使う型を推測する。
+/// tcontext の型（現在の間違ったラベル）は使わず、パスと scontext から判断する。
+/// 戻り値: (推奨型, 確実かどうか)
+fn suggest_fcontext_type(path: &str, scontext: &str) -> (&'static str, bool) {
+    let stype = scontext.split(':').nth(2).unwrap_or("");
+    let p = path.to_ascii_lowercase();
+
+    // ログファイル系（パスに log が含まれる、またはアクセス元が logrotate）
+    if p.contains("/log") || p.ends_with(".log") || stype.contains("logrotate") {
+        if stype.contains("httpd") || stype.contains("nginx") || stype.contains("php") {
+            return ("httpd_log_t", false);
+        }
+        return ("var_log_t", false);
+    }
+    // httpd コンテンツ
+    if stype.contains("httpd_t") || stype.contains("nginx_t") {
+        return ("httpd_sys_content_t", false);
+    }
+    // MySQL / MariaDB
+    if stype.contains("mysqld_t") || stype.contains("mariadb_t") {
+        return ("mysqld_db_t", false);
+    }
+    // その他：restorecon が先なので型不明を示す
+    ("var_t", false)
 }
 
 pub fn render(f: &mut Frame, area: Rect, entry: &AvcEntry, cursor: usize, options: &[RemOption], lang: &Lang) {
@@ -281,12 +320,24 @@ fn build_analysis_text(entry: &AvcEntry, lang: &Lang) -> Vec<String> {
             lines.push(lang.analysis_port_nonstandard(&entry.process));
         }
         crate::selinux::avc::Remedy::FileContext => {
-            lines.push(lang.analysis_write_denied(&entry.target));
+            let eff_path = entry.override_path.as_deref().unwrap_or(&entry.target);
+            lines.push(lang.analysis_write_denied(eff_path));
             lines.push(lang.analysis_fcontext_nonstandard().to_string());
+            if !eff_path.starts_with('/') {
+                lines.push(lang.analysis_path_unknown_hint().to_string());
+            }
+            // tclass=dir かつ絶対パスが取得できている場合は ls -dZ での確認を促す
+            if entry.tclass == "dir" && eff_path.starts_with('/') {
+                lines.push(lang.analysis_dir_label_check(eff_path));
+            }
         }
         crate::selinux::avc::Remedy::Restorecon => {
-            lines.push(lang.analysis_label_stripped(&entry.target));
+            let eff_path = entry.override_path.as_deref().unwrap_or(&entry.target);
+            lines.push(lang.analysis_label_stripped(eff_path));
             lines.push(lang.analysis_restorecon_fix().to_string());
+            if !eff_path.starts_with('/') {
+                lines.push(lang.analysis_path_unknown_hint().to_string());
+            }
         }
         crate::selinux::avc::Remedy::Boolean(b) => {
             lines.push(lang.analysis_bool_enable(b));
@@ -333,7 +384,7 @@ mod tests {
             raw_lines: vec!["type=AVC ... dest=8080 ...".into()],
             remedy: Remedy::PortContext,
             resolved: false,
-            bool_description: None, syscall_name: None, errno_name: None,
+            bool_description: None, syscall_name: None, errno_name: None, override_path: None,
         };
 
         let opts = build_options(&entry, &lang);
@@ -353,7 +404,7 @@ mod tests {
             raw_lines: vec![],
             remedy: Remedy::FileContext,
             resolved: false,
-            bool_description: None, syscall_name: None, errno_name: None,
+            bool_description: None, syscall_name: None, errno_name: None, override_path: None,
         };
 
         let opts = build_options(&entry, &lang);
@@ -366,7 +417,7 @@ mod tests {
         let fc_opt = opts.iter().find(|o| o.key == 'B').expect("Option B missing");
         assert_eq!(fc_opt.command[0], "sh");
         assert_eq!(fc_opt.command[1], "-c");
-        assert!(fc_opt.command[2].contains("semanage fcontext -a -t 'default_t' '/var/www/html/upload(/.*)?'"));
+        assert!(fc_opt.command[2].contains("semanage fcontext -a -t 'httpd_sys_content_t' '/var/www/html/upload(/.*)?'"));
         assert!(fc_opt.command[2].contains("restorecon -Rv '/var/www/html/upload'"));
     }
 
@@ -382,7 +433,7 @@ mod tests {
             raw_lines: vec![],
             remedy: Remedy::Boolean("httpd_can_network_connect".into()),
             resolved: false,
-            bool_description: None, syscall_name: None, errno_name: None,
+            bool_description: None, syscall_name: None, errno_name: None, override_path: None,
         };
 
         let opts = build_options(&entry, &lang);

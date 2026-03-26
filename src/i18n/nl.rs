@@ -51,10 +51,10 @@ pub const POLICY_REVIEW_TITLE: &str = " Beleidscontrole (Enter:Toepassen  Esc:An
 pub const POLICY_APPLY_DESC:   &str = "Het gegenereerde beleidsmodule op het systeem toepassen.";
 
 // ── Oplossingsopties (statisch) ───────────────────────────────────────────────
-pub const OPT_RESTORECON_DESC:     &str = "Standaard bestandscontext herstellen (verloren labels repareren).";
+pub const OPT_RESTORECON_DESC:     &str = "Probeer dit eerst. Standaard bestandscontext herstellen (verloren labels repareren).";
 pub const OPT_CUSTOM_POLICY_LABEL: &str = "Aangepast beleidsmodule genereren en toepassen (audit2allow)";
-pub const OPT_CUSTOM_POLICY_DESC:  &str = "Automatisch beleid genereren met audit2allow. Controleer voor toepassing.";
-pub const OPT_PERMISSIVE_DESC:     &str = "Weigeringen tijdelijk uitschakelen. Vermindert beveiliging; alleen voor onderzoek.";
+pub const OPT_CUSTOM_POLICY_DESC:  &str = "Automatisch beleid genereren met audit2allow. Als het pad bekend is, druk dan eerst op P.";
+pub const OPT_PERMISSIVE_DESC:     &str = "⚠ Schakelt alle weigeringen voor dit domein uit. Groot beveiligingsrisico. Alleen voor onderzoek.";
 pub const OPT_IGNORE_LABEL:        &str = "Niets doen / Toevoegen aan negeringslijst";
 pub const OPT_IGNORE_DESC:         &str = "Dit item toevoegen aan de negeringslijst (alleen binnen het hulpprogramma).";
 
@@ -62,6 +62,12 @@ pub const OPT_IGNORE_DESC:         &str = "Dit item toevoegen aan de negeringsli
 pub const ANALYSIS_FCONTEXT_NONSTANDARD: &str = " Niet-standaard pad vereist toevoeging van een fcontext-regel.";
 pub const ANALYSIS_RESTORECON_FIX:       &str = " Restorecon uitvoeren om de standaardcontext te herstellen kan dit oplossen.";
 pub const ANALYSIS_CUSTOMPOLICY_FIX:     &str = " Een aangepast beleid moet worden gegenereerd met audit2allow.";
+pub const ANALYSIS_PATH_UNKNOWN_HINT: &str = " * Pad onbekend. Druk op P om het pad op te geven en de beste oplossing te zien.";
+pub const PATH_INPUT_TITLE:  &str = " Mappad invoeren";
+pub const PATH_INPUT_PROMPT: &str = " Voer het absolute pad in (bijv. /var/log/myapp)";
+pub const PATH_INPUT_HINT:   &str = " Enter: Bevestigen  Esc: Annuleren";
+pub const OPT_PATH_INPUT_LABEL: &str = "Absoluut pad invoeren om restorecon/fcontext in te schakelen";
+pub const OPT_PATH_INPUT_DESC:  &str = "Pad onbekend — opties A/B niet beschikbaar. Voer het absolute pad in om de stappen voor labelcorrectie te tonen (restorecon / semanage fcontext).";
 
 // ── Remedy-weergavenamen ──────────────────────────────────────────────────────
 pub const REMEDY_PORT_CONTEXT:  &str = "Poortcontext";
@@ -138,6 +144,9 @@ pub fn analysis_write_denied(target: &str) -> String {
 }
 pub fn analysis_label_stripped(target: &str) -> String {
     format!(" Het label op {} is mogelijk verwijderd.", target)
+}
+pub fn analysis_dir_label_check(dir: &str) -> String {
+    format!(" Controleer het label van de map met: ls -dZ {}. Als het label onjuist is, probeer dan eerst restorecon.", dir)
 }
 pub fn analysis_bool_enable(b: &str) -> String {
     format!(" Het inschakelen van Boolean {} kan dit oplossen.", b)

@@ -35,6 +35,7 @@ use crate::ui::app::{App, AuthContext, Screen};
 use crate::ui::screens::avc_detail::{build_options, render as render_detail, select_option};
 use crate::ui::screens::avc_list::render as render_avc_list;
 use crate::ui::screens::auth_popup::render as render_auth;
+use crate::ui::screens::path_input_popup::render as render_path_input;
 use crate::ui::screens::policy_review::render as render_policy_review;
 use crate::ui::screens::module_list::render as render_module_list;
 use crate::ui::widgets::{render_footer, render_header, render_log_overlay, render_status};
@@ -301,7 +302,14 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         });
                     }
                     if let Some(entry) = app.avc_entries.iter_mut().find(|e| e.id == id) {
-                        entry.remedy = remedy;
+                        // TERULE (→ CustomPolicy) は FileContext/Restorecon を上書きしない。
+                        // 汎用ラベル（default_t 等）が付いているファイルは fcontext で
+                        // 直すべきで、audit2why の TERULE で CustomPolicy に格下げしない。
+                        let is_downgrade = matches!(remedy, Remedy::CustomPolicy)
+                            && matches!(entry.remedy, Remedy::FileContext | Remedy::Restorecon);
+                        if !is_downgrade {
+                            entry.remedy = remedy;
+                        }
                     }
                 }
                 AppMsg::BoolDescDone(id, desc) => {
@@ -363,6 +371,16 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         let hint = app.lang.hint_avc_detail();
                         render_footer(f, chunks[2], hint);
                     }
+                }
+                Screen::PathInput(id) => {
+                    // 背景として AvcDetail を描画
+                    if let Some(entry) = app.avc_entries.iter().find(|e| e.id == id).cloned() {
+                        let opts = build_options(&entry, &app.lang);
+                        render_detail(f, chunks[1], &entry, detail_cursor, &opts, &app.lang);
+                    }
+                    let hint = app.lang.path_input_hint();
+                    render_footer(f, chunks[2], hint);
+                    render_path_input(f, size, &app);
                 }
                 Screen::PolicyReview { te, .. } => {
                     let hint = app.lang.hint_policy_review();
@@ -440,8 +458,10 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 break;
             }
 
-            // l キーでログオーバーレイを表示（全画面共通）
-            if key.code == KeyCode::Char('l') && !app.avc_filter_active {
+            // l キーでログオーバーレイを表示（テキスト入力中の画面を除く全画面共通）
+            let is_text_input = matches!(app.current_screen(), Screen::PathInput(_))
+                || app.avc_filter_active;
+            if key.code == KeyCode::Char('l') && !is_text_input {
                 if !app.show_log {
                     app.show_log = true;
                     app.log_scroll = 0;
@@ -567,6 +587,9 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                         app.pop_screen();
                                         app.status_message =
                                             Some(app.lang.ignored().to_string());
+                                    } else if opt.key == 'P' {
+                                        app.path_input_buf.clear();
+                                        app.push_screen(Screen::PathInput(id));
                                     } else if opt.command.is_empty() {
                                         // audit2allow フロー
                                         let raw = entry.raw_lines.clone();
@@ -611,6 +634,9 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                         app.pop_screen();
                                         app.status_message =
                                             Some(app.lang.ignored().to_string());
+                                    } else if opt.key == 'P' {
+                                        app.path_input_buf.clear();
+                                        app.push_screen(Screen::PathInput(id));
                                     } else if opt.command.is_empty() {
                                         let raw = entry.raw_lines.clone();
                                         let module = make_module_name(&entry);
@@ -642,6 +668,30 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     }
                 }
 
+
+                Screen::PathInput(id) => match key.code {
+                    KeyCode::Esc => {
+                        app.path_input_buf.clear();
+                        app.pop_screen();
+                    }
+                    KeyCode::Enter => {
+                        let input = app.path_input_buf.trim().to_string();
+                        app.path_input_buf.clear();
+                        if !input.is_empty() {
+                            if let Some(entry) = app.avc_entries.iter_mut().find(|e| e.id == id) {
+                                entry.override_path = Some(input);
+                            }
+                        }
+                        app.pop_screen();
+                    }
+                    KeyCode::Backspace => {
+                        app.path_input_buf.pop();
+                    }
+                    KeyCode::Char(c) => {
+                        app.path_input_buf.push(c);
+                    }
+                    _ => {}
+                },
                 Screen::ModuleList => match key.code {
                     KeyCode::Esc => {
                         app.pop_screen();

@@ -87,6 +87,14 @@ macro_rules! define_langs {
             pub fn analysis_fcontext_nonstandard(&self) -> &'static str { match self { $( Lang::$variant => $module::ANALYSIS_FCONTEXT_NONSTANDARD, )* } }
             pub fn analysis_restorecon_fix(&self)       -> &'static str { match self { $( Lang::$variant => $module::ANALYSIS_RESTORECON_FIX, )* } }
             pub fn analysis_custompolicy_fix(&self)     -> &'static str { match self { $( Lang::$variant => $module::ANALYSIS_CUSTOMPOLICY_FIX, )* } }
+            pub fn analysis_path_unknown_hint(&self)    -> &'static str { match self { $( Lang::$variant => $module::ANALYSIS_PATH_UNKNOWN_HINT, )* } }
+
+            // ── パス入力ポップアップ ───────────────────────────────────────────
+            pub fn path_input_title(&self)      -> &'static str { match self { $( Lang::$variant => $module::PATH_INPUT_TITLE, )* } }
+            pub fn path_input_prompt(&self)     -> &'static str { match self { $( Lang::$variant => $module::PATH_INPUT_PROMPT, )* } }
+            pub fn path_input_hint(&self)       -> &'static str { match self { $( Lang::$variant => $module::PATH_INPUT_HINT, )* } }
+            pub fn opt_path_input_label(&self)  -> &'static str { match self { $( Lang::$variant => $module::OPT_PATH_INPUT_LABEL, )* } }
+            pub fn opt_path_input_desc(&self)   -> &'static str { match self { $( Lang::$variant => $module::OPT_PATH_INPUT_DESC, )* } }
 
             // ── Remedy 表示名 ─────────────────────────────────────────────────
             pub fn remedy_port_context(&self)  -> &'static str { match self { $( Lang::$variant => $module::REMEDY_PORT_CONTEXT, )* } }
@@ -163,6 +171,9 @@ macro_rules! define_langs {
             }
             pub fn analysis_label_stripped(&self, target: &str) -> String {
                 match self { $( Lang::$variant => $module::analysis_label_stripped(target), )* }
+            }
+            pub fn analysis_dir_label_check(&self, dir: &str) -> String {
+                match self { $( Lang::$variant => $module::analysis_dir_label_check(dir), )* }
             }
             pub fn analysis_bool_enable(&self, b: &str) -> String {
                 match self { $( Lang::$variant => $module::analysis_bool_enable(b), )* }

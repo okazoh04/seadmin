@@ -51,10 +51,10 @@ pub const POLICY_REVIEW_TITLE: &str = " Policy Review (Enter:Apply  Esc:Cancel)"
 pub const POLICY_APPLY_DESC:   &str = "Apply the generated policy module to the system.";
 
 // ── Remediation options (static) ──────────────────────────────────────────────
-pub const OPT_RESTORECON_DESC:     &str = "Restore the default file context (repair stripped labels).";
+pub const OPT_RESTORECON_DESC:     &str = "Try this first. Restores the default file context (fixes stripped labels).";
 pub const OPT_CUSTOM_POLICY_LABEL: &str = "Generate and apply custom policy module (audit2allow)";
-pub const OPT_CUSTOM_POLICY_DESC:  &str = "Auto-generate a policy with audit2allow. Review before applying.";
-pub const OPT_PERMISSIVE_DESC:     &str = "Temporarily disable denials. Reduces security; use only for investigation.";
+pub const OPT_CUSTOM_POLICY_DESC:  &str = "Auto-generate a policy with audit2allow. If you know the path, try P first for a better fix.";
+pub const OPT_PERMISSIVE_DESC:     &str = "⚠ Disables all denials for this domain. Major security risk. Use only for investigation.";
 pub const OPT_IGNORE_LABEL:        &str = "Do nothing / Add to ignore list";
 pub const OPT_IGNORE_DESC:         &str = "Add this entry to the ignore list (tool-local only).";
 
@@ -62,6 +62,12 @@ pub const OPT_IGNORE_DESC:         &str = "Add this entry to the ignore list (to
 pub const ANALYSIS_FCONTEXT_NONSTANDARD: &str = " Non-standard path requires adding an fcontext rule.";
 pub const ANALYSIS_RESTORECON_FIX:       &str = " Running restorecon to restore the default context may resolve this.";
 pub const ANALYSIS_CUSTOMPOLICY_FIX:     &str = " A custom policy needs to be generated with audit2allow.";
+pub const ANALYSIS_PATH_UNKNOWN_HINT: &str = " * Path unknown. Press P to specify the directory path and see the best fix.";
+pub const PATH_INPUT_TITLE:  &str = " Enter Directory Path";
+pub const PATH_INPUT_PROMPT: &str = " Enter absolute path (e.g. /var/log/myapp)";
+pub const PATH_INPUT_HINT:   &str = " Enter: Confirm  Esc: Cancel";
+pub const OPT_PATH_INPUT_LABEL: &str = "Enter absolute path to enable restorecon/fcontext";
+pub const OPT_PATH_INPUT_DESC:  &str = "Path is unknown, so fix options A/B cannot be shown. Enter the absolute path to display label-fix steps (restorecon / semanage fcontext).";
 
 // ── Remedy display names ──────────────────────────────────────────────────────
 pub const REMEDY_PORT_CONTEXT:  &str = "Port Context";
@@ -138,6 +144,9 @@ pub fn analysis_write_denied(target: &str) -> String {
 }
 pub fn analysis_label_stripped(target: &str) -> String {
     format!(" The label on {} may have been stripped.", target)
+}
+pub fn analysis_dir_label_check(dir: &str) -> String {
+    format!(" Check the directory label with: ls -dZ {}. If mislabeled, try restorecon first.", dir)
 }
 pub fn analysis_bool_enable(b: &str) -> String {
     format!(" Enabling the {} Boolean may resolve this.", b)

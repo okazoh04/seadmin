@@ -51,10 +51,10 @@ pub const POLICY_REVIEW_TITLE: &str = " Révision de politique (Enter:Appliquer 
 pub const POLICY_APPLY_DESC:   &str = "Appliquer le module de politique généré au système.";
 
 // ── Options de solution (statiques) ──────────────────────────────────────────
-pub const OPT_RESTORECON_DESC:     &str = "Restaurer le contexte de fichier par défaut (réparer les étiquettes perdues).";
+pub const OPT_RESTORECON_DESC:     &str = "Essayez d'abord ceci. Restaure le contexte de fichier par défaut (répare les étiquettes perdues).";
 pub const OPT_CUSTOM_POLICY_LABEL: &str = "Générer et appliquer un module de politique personnalisé (audit2allow)";
-pub const OPT_CUSTOM_POLICY_DESC:  &str = "Générer automatiquement une politique avec audit2allow. Vérifiez avant d'appliquer.";
-pub const OPT_PERMISSIVE_DESC:     &str = "Désactiver temporairement les refus. Réduit la sécurité ; utiliser uniquement pour l'investigation.";
+pub const OPT_CUSTOM_POLICY_DESC:  &str = "Générer automatiquement une politique avec audit2allow. Si le chemin est connu, appuyez d'abord sur P.";
+pub const OPT_PERMISSIVE_DESC:     &str = "⚠ Désactive toutes les refus du domaine. Risque majeur pour la sécurité. Uniquement pour l'investigation.";
 pub const OPT_IGNORE_LABEL:        &str = "Ne rien faire / Ajouter à la liste d'ignorés";
 pub const OPT_IGNORE_DESC:         &str = "Ajouter cette entrée à la liste d'ignorés (uniquement dans l'outil).";
 
@@ -62,6 +62,12 @@ pub const OPT_IGNORE_DESC:         &str = "Ajouter cette entrée à la liste d'i
 pub const ANALYSIS_FCONTEXT_NONSTANDARD: &str = " Le chemin non standard nécessite l'ajout d'une règle fcontext.";
 pub const ANALYSIS_RESTORECON_FIX:       &str = " Exécuter restorecon pour restaurer le contexte par défaut peut résoudre ce problème.";
 pub const ANALYSIS_CUSTOMPOLICY_FIX:     &str = " Une politique personnalisée doit être générée avec audit2allow.";
+pub const ANALYSIS_PATH_UNKNOWN_HINT: &str = " * Chemin inconnu. Appuyez sur P pour spécifier le chemin et voir la meilleure correction.";
+pub const PATH_INPUT_TITLE:  &str = " Saisir le chemin du répertoire";
+pub const PATH_INPUT_PROMPT: &str = " Saisissez le chemin absolu (ex : /var/log/myapp)";
+pub const PATH_INPUT_HINT:   &str = " Entrée: Confirmer  Échap: Annuler";
+pub const OPT_PATH_INPUT_LABEL: &str = "Saisir le chemin absolu pour activer restorecon/fcontext";
+pub const OPT_PATH_INPUT_DESC:  &str = "Le chemin est inconnu — les options A/B ne peuvent pas être affichées. Saisissez le chemin absolu pour afficher les étapes de correction de contexte (restorecon / semanage fcontext).";
 
 // ── Noms de Remedy ────────────────────────────────────────────────────────────
 pub const REMEDY_PORT_CONTEXT:  &str = "Contexte de port";
@@ -138,6 +144,9 @@ pub fn analysis_write_denied(target: &str) -> String {
 }
 pub fn analysis_label_stripped(target: &str) -> String {
     format!(" L'étiquette sur {} a peut-être été supprimée.", target)
+}
+pub fn analysis_dir_label_check(dir: &str) -> String {
+    format!(" Vérifiez l'étiquette du répertoire avec : ls -dZ {}. Si mal étiquetée, essayez restorecon en premier.", dir)
 }
 pub fn analysis_bool_enable(b: &str) -> String {
     format!(" Activer le Boolean {} peut résoudre ce problème.", b)

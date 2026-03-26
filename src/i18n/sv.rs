@@ -51,10 +51,10 @@ pub const POLICY_REVIEW_TITLE: &str = " Principgranskning (Enter:Tillämpa  Esc:
 pub const POLICY_APPLY_DESC:   &str = "Tillämpa den genererade principmodulen på systemet.";
 
 // ── Lösningsalternativ (statiska) ─────────────────────────────────────────────
-pub const OPT_RESTORECON_DESC:     &str = "Återställ standardfilkontext (reparera borttagna etiketter).";
+pub const OPT_RESTORECON_DESC:     &str = "Försök med detta först. Återställ standardfilkontext (reparera borttagna etiketter).";
 pub const OPT_CUSTOM_POLICY_LABEL: &str = "Generera och tillämpa anpassad principmodul (audit2allow)";
-pub const OPT_CUSTOM_POLICY_DESC:  &str = "Generera princip automatiskt med audit2allow. Granska innan tillämpning.";
-pub const OPT_PERMISSIVE_DESC:     &str = "Inaktivera nekanden tillfälligt. Minskar säkerheten; använd endast för undersökning.";
+pub const OPT_CUSTOM_POLICY_DESC:  &str = "Generera princip automatiskt med audit2allow. Om sökvägen är känd, tryck P först.";
+pub const OPT_PERMISSIVE_DESC:     &str = "⚠ Inaktiverar alla nekanden för domänen. Stor säkerhetsrisk. Använd endast för undersökning.";
 pub const OPT_IGNORE_LABEL:        &str = "Gör inget / Lägg till i ignoreringslista";
 pub const OPT_IGNORE_DESC:         &str = "Lägg till denna post i ignoreringslistan (endast inom verktyget).";
 
@@ -62,6 +62,12 @@ pub const OPT_IGNORE_DESC:         &str = "Lägg till denna post i ignoreringsli
 pub const ANALYSIS_FCONTEXT_NONSTANDARD: &str = " Icke-standardsökväg kräver tillägg av en fcontext-regel.";
 pub const ANALYSIS_RESTORECON_FIX:       &str = " Att köra restorecon för att återställa standardkontexten kan lösa detta.";
 pub const ANALYSIS_CUSTOMPOLICY_FIX:     &str = " En anpassad princip måste genereras med audit2allow.";
+pub const ANALYSIS_PATH_UNKNOWN_HINT: &str = " * Sökväg okänd. Tryck P för att ange sökvägen och se den bästa lösningen.";
+pub const PATH_INPUT_TITLE:  &str = " Ange katalogsökväg";
+pub const PATH_INPUT_PROMPT: &str = " Ange absolut sökväg (t.ex. /var/log/myapp)";
+pub const PATH_INPUT_HINT:   &str = " Enter: Bekräfta  Esc: Avbryt";
+pub const OPT_PATH_INPUT_LABEL: &str = "Ange absolut sökväg för att aktivera restorecon/fcontext";
+pub const OPT_PATH_INPUT_DESC:  &str = "Sökvägen är okänd — alternativ A/B kan inte visas. Ange den absoluta sökvägen för att visa steg för etikettkorrigering (restorecon / semanage fcontext).";
 
 // ── Remedy-visningsnamn ───────────────────────────────────────────────────────
 pub const REMEDY_PORT_CONTEXT:  &str = "Portkontext";
@@ -138,6 +144,9 @@ pub fn analysis_write_denied(target: &str) -> String {
 }
 pub fn analysis_label_stripped(target: &str) -> String {
     format!(" Etiketten på {} kan ha tagits bort.", target)
+}
+pub fn analysis_dir_label_check(dir: &str) -> String {
+    format!(" Kontrollera katalogens etikett med: ls -dZ {}. Om felaktig etikett, försök restorecon först.", dir)
 }
 pub fn analysis_bool_enable(b: &str) -> String {
     format!(" Att aktivera Boolean {} kan lösa detta.", b)

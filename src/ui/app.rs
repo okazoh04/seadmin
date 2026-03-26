@@ -28,6 +28,8 @@ pub enum Screen {
     },
     /// semodule -lfull で取得したモジュール管理画面
     ModuleList,
+    /// パス手動入力ポップアップ（FileContext / Restorecon でパスが不明な場合）
+    PathInput(usize), // AvcEntry の id
 }
 
 /// 認証ポップアップを表示する際のコンテキスト
@@ -123,6 +125,8 @@ pub struct App {
     /// ポリシーモジュール一覧
     pub module_list: Vec<PolicyModule>,
     pub module_cursor: usize,
+    /// PathInput ポップアップのテキスト入力バッファ
+    pub path_input_buf: String,
 }
 
 impl App {
@@ -153,6 +157,7 @@ impl App {
             lang: crate::i18n::detect_lang(),
             module_list: Vec::new(),
             module_cursor: 0,
+            path_input_buf: String::new(),
         }
     }
 
@@ -273,14 +278,14 @@ mod tests {
             process: "nginx".to_string(), perm: "read".to_string(), tclass: "file".to_string(),
             scontext: "".to_string(), tcontext: "".to_string(), target: "/var/www/index.html".to_string(),
             raw_lines: vec![], remedy: Remedy::Restorecon, resolved: false,
-            bool_description: None, syscall_name: None, errno_name: None,
+            bool_description: None, syscall_name: None, errno_name: None, override_path: None,
         };
         let e2 = AvcEntry {
             id: 2, first_seen: Local::now(), last_seen: Local::now(), count: 1,
             process: "httpd".to_string(), perm: "write".to_string(), tclass: "file".to_string(),
             scontext: "".to_string(), tcontext: "".to_string(), target: "/var/log/httpd.log".to_string(),
             raw_lines: vec![], remedy: Remedy::Restorecon, resolved: false,
-            bool_description: None, syscall_name: None, errno_name: None,
+            bool_description: None, syscall_name: None, errno_name: None, override_path: None,
         };
         app.avc_entries = vec![e1, e2];
 
@@ -308,7 +313,7 @@ mod tests {
             process: "nginx".into(), perm: "read".into(), tclass: "file".into(),
             scontext: "s:r:nginx_t:s0".into(), tcontext: "s:o:default_t:s0".into(), target: "/a".into(),
             raw_lines: vec![], remedy: Remedy::Restorecon, resolved: false,
-            bool_description: None, syscall_name: None, errno_name: None,
+            bool_description: None, syscall_name: None, errno_name: None, override_path: None,
         };
         app.avc_entries = vec![e1.clone()];
 
