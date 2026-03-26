@@ -286,13 +286,35 @@ pub struct PolicyModule {
 
 /// `semodule -lfull` を実行してモジュール一覧を返す
 /// 出力形式: "priority  name  type" (例: "400  base  pp")
+/// 権限不足の場合は sudo にフォールバックする
 pub async fn semodule_list_full() -> Result<Vec<PolicyModule>> {
+    let args = ["-lfull"];
+
     let out = Command::new("semodule")
         .env("LC_ALL", "C")
-        .args(["-lfull"])
+        .args(args)
         .output()
-        .await?;
-    let text = String::from_utf8_lossy(&out.stdout);
+        .await;
+
+    let stdout = match out {
+        Ok(o) if o.status.success() => o.stdout,
+        _ => {
+            // 権限不足等の場合は sudo -n でフォールバック
+            let sudo_out = Command::new("sudo")
+                .env("LC_ALL", "C")
+                .args(["-n", "semodule"])
+                .args(args)
+                .output()
+                .await?;
+            if !sudo_out.status.success() {
+                let lang = crate::i18n::detect_lang();
+                return Err(anyhow::anyhow!("{}", lang.err_audit_no_perm()));
+            }
+            sudo_out.stdout
+        }
+    };
+
+    let text = String::from_utf8_lossy(&stdout);
     let mut modules = Vec::new();
     for line in text.lines() {
         let parts: Vec<&str> = line.split_whitespace().collect();
@@ -307,4 +329,53 @@ pub async fn semodule_list_full() -> Result<Vec<PolicyModule>> {
     }
     modules.sort_by(|a, b| b.priority.cmp(&a.priority).then(a.name.cmp(&b.name)));
     Ok(modules)
+}
+
+/// `semodule -X {priority} -c -E {name}` でモジュールの CIL を取り出して返す
+/// カレントディレクトリに .cil ファイルが生成されるため一時ディレクトリで実行する
+/// 権限不足の場合は sudo -n にフォールバックする
+pub async fn semodule_extract_cil(name: &str, priority: u16) -> Result<String> {
+    use tempfile::tempdir;
+
+    let tmp = tempdir()?;
+    let args = [
+        "-X", &priority.to_string(),
+        "-c", "-E", name,
+    ];
+
+    // 権限なしで試みる
+    let status = Command::new("semodule")
+        .env("LC_ALL", "C")
+        .args(args)
+        .current_dir(tmp.path())
+        .status()
+        .await;
+
+    let succeeded = match status {
+        Ok(s) if s.success() => true,
+        _ => {
+            // sudo -n でリトライ
+            let s = Command::new("sudo")
+                .env("LC_ALL", "C")
+                .args(["-n", "semodule"])
+                .args(args)
+                .current_dir(tmp.path())
+                .status()
+                .await?;
+            if !s.success() {
+                let lang = crate::i18n::detect_lang();
+                return Err(anyhow::anyhow!("{}", lang.err_audit_no_perm()));
+            }
+            true
+        }
+    };
+
+    if !succeeded {
+        let lang = crate::i18n::detect_lang();
+        return Err(anyhow::anyhow!("{}", lang.err_audit_no_perm()));
+    }
+
+    let cil_path = tmp.path().join(format!("{}.cil", name));
+    let cil = tokio::fs::read_to_string(&cil_path).await?;
+    Ok(cil)
 }

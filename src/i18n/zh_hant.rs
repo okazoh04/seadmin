@@ -13,7 +13,12 @@ pub const HINT_AVC_LIST:     &str = "↑↓/jk:移動  Enter:詳情  /:篩選  r
 pub const HINT_AVC_DETAIL:   &str = "A-F:選擇處置  Esc/←:返回  Enter:確認";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:捲動  Enter:套用  Esc:取消";
 pub const HINT_AUTH:         &str = "Enter:執行  Esc:取消";
-pub const HINT_MODULE_LIST:  &str = "↑↓/jk:移動  d:刪除  Esc:返回";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:移動  d:刪除  a:切換全部/自訂  Esc:返回";
+pub const MODULE_LIST_AUTH_DESC: &str = "取得模組清單需要管理員權限。驗證後將自動載入。";
+pub const HINT_MODULE_DETAIL:    &str = "↑↓/jk:捲動  Esc:返回";
+pub const MODULE_DETAIL_AUTH_DESC:  &str = "取得模組詳情需要管理員權限。驗證後將自動載入。";
+pub const MODULE_DETAIL_TITLE:      &str = " 模組詳情 ";
+pub const MODULE_DETAIL_CIL_TITLE:  &str = " CIL 規則 ";
 
 // ── 表格標題 ──────────────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "時間";
@@ -79,8 +84,12 @@ pub const REMEDY_CUSTOM_POLICY: &str = "自訂原則";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" 存取拒絕清單  [今日]  未處理: {}條 / 共 {}條 ", unresolved, total)
 }
-pub fn module_list_title(count: usize) -> String {
-    format!(" 政策模組清單  {} 個 ", count)
+pub fn module_list_title(custom: usize, total: usize, show_all: bool) -> String {
+    if show_all {
+        format!(" 政策模組清單  {} 個 ", total)
+    } else {
+        format!(" 自訂模組  {}個 / 共{}個 ", custom, total)
+    }
 }
 pub fn module_delete_desc(name: &str) -> String {
     format!("刪除政策模組 '{}'。", name)

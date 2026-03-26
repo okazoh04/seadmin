@@ -10,75 +10,107 @@
 
 use crate::ui::app::App;
 use ratatui::{
-    layout::Constraint,
+    layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Cell, Row, Table, TableState},
+    widgets::{Block, Borders, Paragraph},
     Frame,
 };
 
-pub fn render(f: &mut Frame, area: ratatui::layout::Rect, app: &App) {
+/// カスタムモジュールと判定する優先度の閾値（seadmin は -X 300 で適用する）
+const CUSTOM_PRIORITY_THRESHOLD: u16 = 300;
+
+pub fn render(f: &mut Frame, area: Rect, app: &App) {
     let lang = &app.lang;
-    let modules = &app.module_list;
+    let all_modules = &app.module_list;
+    let show_all = app.module_show_all;
 
-    let title = lang.module_list_title(modules.len());
+    // 表示対象を絞り込む
+    let displayed: Vec<_> = if show_all {
+        all_modules.iter().collect()
+    } else {
+        all_modules
+            .iter()
+            .filter(|m| m.priority >= CUSTOM_PRIORITY_THRESHOLD)
+            .collect()
+    };
 
-    let header = Row::new(vec![
-        Cell::from(lang.col_priority())
-            .style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-        Cell::from(lang.col_module_name())
-            .style(Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-    ])
-    .style(Style::default().bg(Color::Rgb(26, 26, 46)))
-    .height(1);
-
-    let rows: Vec<Row> = modules
+    let custom_count = all_modules
         .iter()
-        .enumerate()
-        .map(|(i, m)| {
-            let selected = i == app.module_cursor;
-            let style = if selected {
-                Style::default()
-                    .bg(Color::Rgb(26, 82, 118))
-                    .fg(Color::White)
-            } else {
-                Style::default().fg(Color::Rgb(200, 200, 200))
-            };
+        .filter(|m| m.priority >= CUSTOM_PRIORITY_THRESHOLD)
+        .count();
+    let total_count = all_modules.len();
 
-            let priority_cell = if selected {
-                Cell::from(Line::from(vec![
-                    Span::styled("▶ ", Style::default().fg(Color::White)),
-                    Span::raw(m.priority.to_string()),
-                ]))
-            } else {
-                Cell::from(format!("  {}", m.priority))
-            };
+    let title = lang.module_list_title(custom_count, total_count, show_all);
 
-            Row::new(vec![
-                priority_cell,
-                Cell::from(m.name.clone()),
-            ])
-            .style(style)
-            .height(1)
-        })
-        .collect();
+    // 表示可能な行数を計算（上下ボーダー各1行 + ヘッダー行1行 = 3行のオーバーヘッド）
+    let visible_rows = (area.height as usize).saturating_sub(3);
 
-    let widths = [Constraint::Length(10), Constraint::Min(20)];
+    // カーソルが表示範囲に入るようにオフセットを計算
+    let offset = if app.module_cursor >= visible_rows {
+        app.module_cursor - visible_rows + 1
+    } else {
+        0
+    };
 
-    let table = Table::new(rows, widths)
-        .header(header)
-        .block(
-            Block::default()
-                .title(title)
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Rgb(100, 149, 237))),
-        )
-        .row_highlight_style(Style::default().bg(Color::Rgb(26, 82, 118)));
+    // ヘッダー行
+    let header_line = Line::from(vec![
+        Span::styled(
+            format!(" {:<9}", lang.col_priority()),
+            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            lang.col_module_name(),
+            Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+        ),
+    ])
+    .style(Style::default().bg(Color::Rgb(26, 26, 46)));
 
-    let mut state = TableState::default();
-    if !modules.is_empty() {
-        state.select(Some(app.module_cursor));
+    // データ行
+    let mut lines: Vec<Line> = vec![header_line];
+    for (i, m) in displayed.iter().enumerate().skip(offset).take(visible_rows) {
+        let selected = i == app.module_cursor;
+        let is_custom = m.priority >= CUSTOM_PRIORITY_THRESHOLD;
+
+        let row_style = if selected {
+            Style::default().bg(Color::Rgb(26, 82, 118)).fg(Color::White)
+        } else if is_custom {
+            Style::default().fg(Color::Rgb(255, 215, 100))
+        } else {
+            Style::default().fg(Color::Rgb(120, 120, 120))
+        };
+
+        let (prefix_span, priority_str) = if selected {
+            (
+                Span::styled("▶ ", Style::default().fg(Color::White)),
+                format!("{:<7} ", m.priority),
+            )
+        } else if is_custom {
+            (
+                Span::styled("* ", Style::default().fg(Color::Rgb(255, 180, 50))),
+                format!("{:<7} ", m.priority),
+            )
+        } else {
+            (
+                Span::raw("  "),
+                format!("{:<7} ", m.priority),
+            )
+        };
+
+        let line = Line::from(vec![
+            prefix_span,
+            Span::styled(priority_str, row_style),
+            Span::styled(m.name.clone(), row_style),
+        ]);
+        lines.push(line);
     }
 
-    f.render_stateful_widget(table, area, &mut state);
+    let para = Paragraph::new(lines).block(
+        Block::default()
+            .title(title)
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(Color::Rgb(100, 149, 237))),
+    );
+
+    f.render_widget(para, area);
 }

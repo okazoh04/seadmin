@@ -13,7 +13,12 @@ pub const HINT_AVC_LIST:     &str = "↑↓/jk:Di chuyển  Enter:Chi tiết  /:
 pub const HINT_AVC_DETAIL:   &str = "A-F:Chọn  Esc/←:Quay lại  Enter:Xác nhận";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Cuộn  Enter:Áp dụng  Esc:Hủy";
 pub const HINT_AUTH:         &str = "Enter:Thực thi  Esc:Hủy";
-pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Di chuyển  d:Xóa  Esc:Quay lại";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Di chuyển  d:Xóa  a:Chuyển tất cả/tùy chỉnh  Esc:Quay lại";
+pub const MODULE_LIST_AUTH_DESC: &str = "Cần quyền quản trị viên để liệt kê các mô-đun. Sẽ tải tự động sau khi xác thực.";
+pub const HINT_MODULE_DETAIL:       &str = "↑↓/jk:Cuộn  Esc:Quay lại";
+pub const MODULE_DETAIL_AUTH_DESC:  &str = "Cần quyền quản trị viên để trích xuất nội dung mô-đun.";
+pub const MODULE_DETAIL_TITLE:      &str = "Chi tiết mô-đun";
+pub const MODULE_DETAIL_CIL_TITLE:  &str = "Quy tắc CIL";
 
 // ── Tiêu đề bảng ──────────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "Thời gian";
@@ -79,8 +84,12 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Chính sách tùy chỉnh";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Từ chối truy cập  [Hôm nay]  Chưa giải quyết: {} / Tổng: {} ", unresolved, total)
 }
-pub fn module_list_title(count: usize) -> String {
-    format!(" Mô-đun chính sách  {} mô-đun ", count)
+pub fn module_list_title(custom: usize, total: usize, show_all: bool) -> String {
+    if show_all {
+        format!(" Mô-đun chính sách  {} tổng ", total)
+    } else {
+        format!(" Mô-đun tùy chỉnh  {} / {} tổng ", custom, total)
+    }
 }
 pub fn module_delete_desc(name: &str) -> String {
     format!("Xóa mô-đun chính sách '{}'.", name)

@@ -13,7 +13,12 @@ pub const HINT_AVC_LIST:     &str = "↑↓/jk:Flytta  Enter:Detaljer  /:Filtrer
 pub const HINT_AVC_DETAIL:   &str = "A-F:Välj  Esc/←:Tillbaka  Enter:Bekräfta";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Rulla  Enter:Tillämpa  Esc:Avbryt";
 pub const HINT_AUTH:         &str = "Enter:Kör  Esc:Avbryt";
-pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Flytta  d:Ta bort  Esc:Tillbaka";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Flytta  d:Ta bort  a:Växla alla/anpassade  Esc:Tillbaka";
+pub const MODULE_LIST_AUTH_DESC: &str = "Administratörsbehörighet krävs för att lista moduler. Laddas automatiskt efter autentisering.";
+pub const HINT_MODULE_DETAIL:       &str = "↑↓/jk:Rulla  Esc:Tillbaka";
+pub const MODULE_DETAIL_AUTH_DESC:  &str = "Administratörsbehörighet krävs för att extrahera modulinnehåll.";
+pub const MODULE_DETAIL_TITLE:      &str = "Moduldetaljer";
+pub const MODULE_DETAIL_CIL_TITLE:  &str = "CIL-regler";
 
 // ── Tabellrubriker ────────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "När";
@@ -79,8 +84,12 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Anpassad princip";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Åtkomstnekanden  [Idag]  Olösta: {} / Totalt: {} ", unresolved, total)
 }
-pub fn module_list_title(count: usize) -> String {
-    format!(" Principmoduler  {} moduler ", count)
+pub fn module_list_title(custom: usize, total: usize, show_all: bool) -> String {
+    if show_all {
+        format!(" Principmoduler  {} totalt ", total)
+    } else {
+        format!(" Anpassade moduler  {} / {} totalt ", custom, total)
+    }
 }
 pub fn module_delete_desc(name: &str) -> String {
     format!("Ta bort principmodul '{}'.", name)

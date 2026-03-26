@@ -13,7 +13,12 @@ pub const HINT_AVC_LIST:     &str = "↑↓/jk:Flytt  Enter:Detaljer  /:Filtrer 
 pub const HINT_AVC_DETAIL:   &str = "A-F:Velg  Esc/←:Tilbake  Enter:Bekreft";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Rull  Enter:Bruk  Esc:Avbryt";
 pub const HINT_AUTH:         &str = "Enter:Kjør  Esc:Avbryt";
-pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Flytt  d:Slett  Esc:Tilbake";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Flytt  d:Slett  a:Bytt alle/tilpassede  Esc:Tilbake";
+pub const MODULE_LIST_AUTH_DESC: &str = "Administratorrettigheter kreves for å liste opp moduler. Lastes automatisk etter autentisering.";
+pub const HINT_MODULE_DETAIL:       &str = "↑↓/jk:Rull  Esc:Tilbake";
+pub const MODULE_DETAIL_AUTH_DESC:  &str = "Administratorrettigheter kreves for å pakke ut modulinnhold.";
+pub const MODULE_DETAIL_TITLE:      &str = "Moduldetaljer";
+pub const MODULE_DETAIL_CIL_TITLE:  &str = "CIL-regler";
 
 // ── Tabelloverskrifter ────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "Når";
@@ -79,8 +84,12 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Tilpasset policy";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Tilgangsnektelser  [I dag]  Uløste: {} / Totalt: {} ", unresolved, total)
 }
-pub fn module_list_title(count: usize) -> String {
-    format!(" Policymoduler  {} moduler ", count)
+pub fn module_list_title(custom: usize, total: usize, show_all: bool) -> String {
+    if show_all {
+        format!(" Policymoduler  {} totalt ", total)
+    } else {
+        format!(" Tilpassede moduler  {} / {} totalt ", custom, total)
+    }
 }
 pub fn module_delete_desc(name: &str) -> String {
     format!("Slett policymodul '{}'.", name)

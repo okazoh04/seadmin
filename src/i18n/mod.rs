@@ -39,6 +39,11 @@ macro_rules! define_langs {
             pub fn hint_policy_review(&self) -> &'static str { match self { $( Lang::$variant => $module::HINT_POLICY_REVIEW, )* } }
             pub fn hint_auth(&self)          -> &'static str { match self { $( Lang::$variant => $module::HINT_AUTH, )* } }
             pub fn hint_module_list(&self)   -> &'static str { match self { $( Lang::$variant => $module::HINT_MODULE_LIST, )* } }
+            pub fn hint_module_detail(&self) -> &'static str { match self { $( Lang::$variant => $module::HINT_MODULE_DETAIL, )* } }
+            pub fn module_list_auth_desc(&self)   -> &'static str { match self { $( Lang::$variant => $module::MODULE_LIST_AUTH_DESC, )* } }
+            pub fn module_detail_auth_desc(&self) -> &'static str { match self { $( Lang::$variant => $module::MODULE_DETAIL_AUTH_DESC, )* } }
+            pub fn module_detail_title(&self)     -> &'static str { match self { $( Lang::$variant => $module::MODULE_DETAIL_TITLE, )* } }
+            pub fn module_detail_cil_title(&self) -> &'static str { match self { $( Lang::$variant => $module::MODULE_DETAIL_CIL_TITLE, )* } }
 
             // ── テーブルヘッダー ──────────────────────────────────────────────
             pub fn col_occurred(&self)     -> &'static str { match self { $( Lang::$variant => $module::COL_OCCURRED, )* } }
@@ -106,8 +111,8 @@ macro_rules! define_langs {
             pub fn avc_list_title(&self, unresolved: usize, total: usize) -> String {
                 match self { $( Lang::$variant => $module::avc_list_title(unresolved, total), )* }
             }
-            pub fn module_list_title(&self, count: usize) -> String {
-                match self { $( Lang::$variant => $module::module_list_title(count), )* }
+            pub fn module_list_title(&self, custom: usize, total: usize, show_all: bool) -> String {
+                match self { $( Lang::$variant => $module::module_list_title(custom, total, show_all), )* }
             }
             pub fn module_delete_desc(&self, name: &str) -> String {
                 match self { $( Lang::$variant => $module::module_delete_desc(name), )* }

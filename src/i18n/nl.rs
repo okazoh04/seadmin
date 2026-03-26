@@ -13,7 +13,12 @@ pub const HINT_AVC_LIST:     &str = "↑↓/jk:Verplaats  Enter:Details  /:Filte
 pub const HINT_AVC_DETAIL:   &str = "A-F:Selecteer  Esc/←:Terug  Enter:Bevestigen";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Scrollen  Enter:Toepassen  Esc:Annuleren";
 pub const HINT_AUTH:         &str = "Enter:Uitvoeren  Esc:Annuleren";
-pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Verplaats  d:Verwijder  Esc:Terug";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Verplaats  d:Verwijder  a:Wissel alles/aangep.  Esc:Terug";
+pub const MODULE_LIST_AUTH_DESC: &str = "Beheerdersrechten zijn vereist om modules te vermelden. Wordt automatisch geladen na authenticatie.";
+pub const HINT_MODULE_DETAIL:       &str = "↑↓/jk:Scrollen  Esc:Terug";
+pub const MODULE_DETAIL_AUTH_DESC:  &str = "Beheerdersrechten zijn vereist om de module-inhoud te extraheren.";
+pub const MODULE_DETAIL_TITLE:      &str = "Module Details";
+pub const MODULE_DETAIL_CIL_TITLE:  &str = "CIL Regels";
 
 // ── Tabelkoppen ───────────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "Wanneer";
@@ -79,8 +84,12 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Aangepast beleid";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Toegangsweigeringen  [Vandaag]  Onopgelost: {} / Totaal: {} ", unresolved, total)
 }
-pub fn module_list_title(count: usize) -> String {
-    format!(" Beleidsmodules  {} modules ", count)
+pub fn module_list_title(custom: usize, total: usize, show_all: bool) -> String {
+    if show_all {
+        format!(" Beleidsmodules  {} totaal ", total)
+    } else {
+        format!(" Aangepaste modules  {} / {} totaal ", custom, total)
+    }
 }
 pub fn module_delete_desc(name: &str) -> String {
     format!("Beleidsmodule '{}' verwijderen.", name)

@@ -13,7 +13,12 @@ pub const HINT_AVC_LIST:     &str = "↑↓/jk:Sposta  Enter:Dettagli  /:Filtra 
 pub const HINT_AVC_DETAIL:   &str = "A-F:Seleziona  Esc/←:Indietro  Enter:Conferma";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Scorri  Enter:Applica  Esc:Annulla";
 pub const HINT_AUTH:         &str = "Enter:Esegui  Esc:Annulla";
-pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Sposta  d:Elimina  Esc:Indietro";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Sposta  d:Elimina  a:Alterna tutto/pers.  Esc:Indietro";
+pub const MODULE_LIST_AUTH_DESC: &str = "Sono necessari i privilegi di amministratore per elencare i moduli. Verrà caricato automaticamente dopo l'autenticazione.";
+pub const HINT_MODULE_DETAIL:    &str = "↑↓/jk:Scorri  Esc:Indietro";
+pub const MODULE_DETAIL_AUTH_DESC:  &str = "Sono necessari i privilegi di amministratore per i dettagli del modulo. Verrà caricato automaticamente dopo l'autenticazione.";
+pub const MODULE_DETAIL_TITLE:      &str = " Dettagli modulo ";
+pub const MODULE_DETAIL_CIL_TITLE:  &str = " Regole CIL ";
 
 // ── Intestazioni tabella ──────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "Quando";
@@ -79,8 +84,12 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Criterio personalizzato";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Rifiuti di accesso  [Oggi]  Non risolti: {} / Totale: {} ", unresolved, total)
 }
-pub fn module_list_title(count: usize) -> String {
-    format!(" Moduli criterio  {} moduli ", count)
+pub fn module_list_title(custom: usize, total: usize, show_all: bool) -> String {
+    if show_all {
+        format!(" Moduli criterio  {} totale ", total)
+    } else {
+        format!(" Moduli personalizzati  {} / {} totale ", custom, total)
+    }
 }
 pub fn module_delete_desc(name: &str) -> String {
     format!("Rimuovere il modulo criterio '{}'.", name)

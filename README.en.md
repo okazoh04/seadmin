@@ -31,7 +31,7 @@ Parses `ausearch` output to interactively list access denials, analyze their cau
 
 - Linux with SELinux enabled (Fedora / RHEL / CentOS / Rocky Linux, etc.)
 - Rust 1.85 or later (edition 2024)
-- The following commands must be in `PATH`:
+- The following commands must be in `PATH` (or standard paths like `/usr/sbin`):
   - `ausearch` (audit package)
   - `getenforce` (libselinux-utils)
   - `sudo`
@@ -39,7 +39,7 @@ Parses `ausearch` output to interactively list access denials, analyze their cau
   - `audit2allow` (policycoreutils-devel) — for custom policy generation
   - `restorecon` (policycoreutils) — for label repair
   - `setsebool` (libselinux-utils) — for Boolean changes
-  - `semodule` (policycoreutils) — for policy module installation
+  - `semodule` (policycoreutils) — for policy module management
 
 ## Installation
 
@@ -154,5 +154,18 @@ This project is released under the [GNU General Public License v3.0](LICENSE).
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+```
+kazoh04
+
+This project is released under the [GNU General Public License v3.0](LICENSE).
+
+```
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+```
+dation, either version 3 of the License, or
 (at your option) any later version.
 ```

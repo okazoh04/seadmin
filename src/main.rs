@@ -29,7 +29,7 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 
 use crate::selinux::avc::{parse_ausearch_output, Remedy};
-use crate::selinux::commands::{audit2why, ausearch_avc, getenforce, hostname, sepolicy_bool_desc, semodule_list_full, PolicyModule};
+use crate::selinux::commands::{audit2why, ausearch_avc, getenforce, hostname, sepolicy_bool_desc, semodule_list_full, semodule_extract_cil, PolicyModule};
 use crate::sudo::runner::{run_with_sudo, SudoResult};
 use crate::ui::app::{App, AuthContext, Screen};
 use crate::ui::screens::avc_detail::{build_options, render as render_detail, select_option};
@@ -38,6 +38,7 @@ use crate::ui::screens::auth_popup::render as render_auth;
 use crate::ui::screens::path_input_popup::render as render_path_input;
 use crate::ui::screens::policy_review::render as render_policy_review;
 use crate::ui::screens::module_list::render as render_module_list;
+use crate::ui::screens::module_detail::render as render_module_detail;
 use crate::ui::widgets::{render_footer, render_header, render_log_overlay, render_status};
 
 /// バックグラウンドタスクから UI スレッドへのメッセージ
@@ -54,6 +55,12 @@ enum AppMsg {
     BoolDescDone(usize, String),
     /// semodule -lfull の結果
     ModuleListLoaded(Vec<PolicyModule>),
+    /// semodule -lfull に root 権限が必要（認証フローを起動する）
+    ModuleListNeedAuth,
+    /// semodule -c -E の結果
+    ModuleDetailLoaded { name: String, priority: u16, cil: String },
+    /// semodule -c -E に root 権限が必要（認証後にリトライ）
+    ModuleDetailNeedAuth { name: String, priority: u16 },
 }
 
 #[tokio::main]
@@ -205,6 +212,39 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     app.module_cursor = 0;
                     app.loading = false;
                 }
+                AppMsg::ModuleListNeedAuth => {
+                    // semodule -lfull に権限が必要 → 認証後に自動リロード
+                    app.loading = false;
+                    let desc = app.lang.module_list_auth_desc().to_string();
+                    let ctx = AuthContext {
+                        command: vec!["true".to_string()],
+                        description: desc,
+                        prev_screen: Box::new(Screen::ModuleList),
+                    };
+                    if !try_sudo_with_cache(&mut app, ctx.clone(), &tx) {
+                        app.push_screen(Screen::Auth(ctx));
+                        app.prepare_auth();
+                    }
+                }
+                AppMsg::ModuleDetailLoaded { name, priority, cil } => {
+                    app.loading = false;
+                    app.module_detail_scroll = 0;
+                    app.push_screen(Screen::ModuleDetail { name, priority, cil });
+                }
+                AppMsg::ModuleDetailNeedAuth { name, priority } => {
+                    app.loading = false;
+                    app.pending_module_detail = Some((name, priority));
+                    let desc = app.lang.module_detail_auth_desc().to_string();
+                    let ctx = AuthContext {
+                        command: vec!["true".to_string()],
+                        description: desc,
+                        prev_screen: Box::new(Screen::ModuleList),
+                    };
+                    if !try_sudo_with_cache(&mut app, ctx.clone(), &tx) {
+                        app.push_screen(Screen::Auth(ctx));
+                        app.prepare_auth();
+                    }
+                }
                 AppMsg::SudoResult(res) => match res {
                     SudoResult::Ok => {
                         app.loading = false;
@@ -214,10 +254,40 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         app.auth_error = None;
                         app.auth_state.reset();
 
-                        // ModuleList 画面からの操作（モジュール削除）かチェック
-                        let is_module_op = app.screen_stack.iter().any(|s| matches!(s, Screen::ModuleList));
-                        if is_module_op {
-                            // 削除したモジュール名を取得してメッセージ表示
+                        // 認証バリデーション（モジュール一覧取得のための権限取得）かチェック
+                        let is_credential_validation = pending_ctx.as_ref()
+                            .map(|ctx| ctx.command == vec!["true"])
+                            .unwrap_or(false);
+                        // ModuleList 画面からの操作（削除 or バリデーション）かチェック
+                        let is_module_screen = app.screen_stack.iter().any(|s| matches!(s, Screen::ModuleList));
+
+                        if is_credential_validation && is_module_screen {
+                            if matches!(app.current_screen(), Screen::Auth(_)) {
+                                app.pop_screen();
+                            }
+                            // pending_module_detail があれば詳細取得をリトライ
+                            if let Some((name, priority)) = app.pending_module_detail.take() {
+                                app.loading = true;
+                                let tx2 = tx.clone();
+                                tokio::spawn(async move {
+                                    match semodule_extract_cil(&name, priority).await {
+                                        Ok(cil) => { let _ = tx2.send(AppMsg::ModuleDetailLoaded { name, priority, cil }).await; }
+                                        Err(_)  => { let _ = tx2.send(AppMsg::ModuleDetailLoaded { name, priority, cil: String::new() }).await; }
+                                    }
+                                });
+                            } else {
+                                // モジュール一覧の認証リトライ
+                                app.loading = true;
+                                let tx2 = tx.clone();
+                                tokio::spawn(async move {
+                                    match semodule_list_full().await {
+                                        Ok(modules) => { let _ = tx2.send(AppMsg::ModuleListLoaded(modules)).await; }
+                                        Err(_) => { let _ = tx2.send(AppMsg::ModuleListLoaded(Vec::new())).await; }
+                                    }
+                                });
+                            }
+                        } else if is_module_screen {
+                            // モジュール削除完了
                             let deleted_name = pending_ctx.as_ref()
                                 .and_then(|ctx| ctx.command.get(4))
                                 .cloned()
@@ -337,6 +407,12 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
             }
         }
 
+        // ModuleDetail 遷移時: ratatui の差分バッファ残像を消去するため完全再描画
+        if app.needs_full_redraw {
+            app.needs_full_redraw = false;
+            terminal.clear()?;
+        }
+
         // 描画
         terminal.draw(|f| {
             let size = f.area();
@@ -354,8 +430,6 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
 
             // 毎フレーム全画面クリア（画面遷移・Auth popup 背景などの残像を確実に除去）
             f.render_widget(ratatui::widgets::Clear, size);
-
-            render_header(f, chunks[0], &app.selinux_mode, &app.hostname, &app.lang);
 
             // コンテンツエリア
             match app.current_screen().clone() {
@@ -392,6 +466,11 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     render_module_list(f, chunks[1], &app);
                     render_footer(f, chunks[2], hint);
                 }
+                Screen::ModuleDetail { ref name, priority, ref cil } => {
+                    let hint = app.lang.hint_module_detail();
+                    render_module_detail(f, chunks[1], &app, name, priority, cil);
+                    render_footer(f, chunks[2], hint);
+                }
                 Screen::Auth(ref ctx) => {
                     // 背景として前画面を描画
                     match *ctx.prev_screen.clone() {
@@ -415,6 +494,9 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         Screen::ModuleList => {
                             render_module_list(f, chunks[1], &app);
                         }
+                        Screen::ModuleDetail { ref name, priority, ref cil } => {
+                            render_module_detail(f, chunks[1], &app, name, priority, cil);
+                        }
                         _ => {
                             render_avc_list(f, chunks[1], &mut app);
                         }
@@ -425,6 +507,8 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                 }
             }
 
+            // ヘッダーを最後に描画（Table ウィジェットの範囲外描画によるヘッダー上書きを防ぐ）
+            render_header(f, chunks[0], &app.selinux_mode, &app.hostname, &app.lang);
             // ステータスバー
             if let Some(msg) = &app.status_message.clone() {
                 let is_err = msg.starts_with('⚠');
@@ -546,7 +630,8 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                     let _ = tx2.send(AppMsg::ModuleListLoaded(modules)).await;
                                 }
                                 Err(_) => {
-                                    let _ = tx2.send(AppMsg::ModuleListLoaded(Vec::new())).await;
+                                    // 権限不足 → 認証フローを起動
+                                    let _ = tx2.send(AppMsg::ModuleListNeedAuth).await;
                                 }
                             }
                         });
@@ -692,7 +777,14 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                     }
                     _ => {}
                 },
-                Screen::ModuleList => match key.code {
+                Screen::ModuleList => {
+                    // 現在の表示対象リストを計算（show_all フラグに基づく）
+                    let displayed_len = if app.module_show_all {
+                        app.module_list.len()
+                    } else {
+                        app.module_list.iter().filter(|m| m.priority >= 300).count()
+                    };
+                    match key.code {
                     KeyCode::Esc => {
                         app.pop_screen();
                     }
@@ -702,12 +794,26 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                         }
                     }
                     KeyCode::Down | KeyCode::Char('j') => {
-                        if app.module_cursor < app.module_list.len().saturating_sub(1) {
+                        if app.module_cursor < displayed_len.saturating_sub(1) {
                             app.module_cursor += 1;
                         }
                     }
+                    KeyCode::Char('a') => {
+                        app.module_show_all = !app.module_show_all;
+                        app.module_cursor = 0;
+                    }
                     KeyCode::Char('d') => {
-                        if let Some(m) = app.module_list.get(app.module_cursor).cloned() {
+                        // 表示リストから選択中のモジュールを取得
+                        let target = if app.module_show_all {
+                            app.module_list.get(app.module_cursor).cloned()
+                        } else {
+                            app.module_list
+                                .iter()
+                                .filter(|m| m.priority >= 300)
+                                .nth(app.module_cursor)
+                                .cloned()
+                        };
+                        if let Some(m) = target {
                             let cmd = vec![
                                 "semodule".to_string(),
                                 "-X".to_string(),
@@ -725,6 +831,51 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<io::Stdout>>) -> Resul
                                 app.push_screen(Screen::Auth(ctx));
                                 app.prepare_auth();
                             }
+                        }
+                    }
+                    KeyCode::Enter => {
+                        // 選択中モジュールの CIL 詳細を表示
+                        let target = if app.module_show_all {
+                            app.module_list.get(app.module_cursor).cloned()
+                        } else {
+                            app.module_list
+                                .iter()
+                                .filter(|m| m.priority >= 300)
+                                .nth(app.module_cursor)
+                                .cloned()
+                        };
+                        if let Some(m) = target {
+                            app.loading = true;
+                            let name = m.name.clone();
+                            let priority = m.priority;
+                            let tx2 = tx.clone();
+                            tokio::spawn(async move {
+                                match semodule_extract_cil(&name, priority).await {
+                                    Ok(cil) => {
+                                        let _ = tx2.send(AppMsg::ModuleDetailLoaded { name, priority, cil }).await;
+                                    }
+                                    Err(_) => {
+                                        let _ = tx2.send(AppMsg::ModuleDetailNeedAuth { name, priority }).await;
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    _ => {}
+                    }
+                },
+
+                Screen::ModuleDetail { name: _, priority: _, cil } => match key.code {
+                    KeyCode::Esc => {
+                        app.pop_screen();
+                    }
+                    KeyCode::Up | KeyCode::Char('k') => {
+                        app.module_detail_scroll = app.module_detail_scroll.saturating_sub(1);
+                    }
+                    KeyCode::Down | KeyCode::Char('j') => {
+                        let total = cil.lines().count();
+                        if app.module_detail_scroll + 1 < total {
+                            app.module_detail_scroll += 1;
                         }
                     }
                     _ => {}

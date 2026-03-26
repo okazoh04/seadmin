@@ -13,7 +13,12 @@ pub const HINT_AVC_LIST:     &str = "↑↓/jk:Mover  Enter:Detalle  /:Filtrar  
 pub const HINT_AVC_DETAIL:   &str = "A-F:Seleccionar  Esc/←:Volver  Enter:Confirmar";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Desplazar  Enter:Aplicar  Esc:Cancelar";
 pub const HINT_AUTH:         &str = "Enter:Ejecutar  Esc:Cancelar";
-pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Mover  d:Eliminar  Esc:Volver";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Mover  d:Eliminar  a:Alternar todo/pers.  Esc:Volver";
+pub const MODULE_LIST_AUTH_DESC: &str = "Se requieren privilegios de administrador para listar módulos. Se cargará automáticamente tras la autenticación.";
+pub const HINT_MODULE_DETAIL:    &str = "↑↓/jk:Desplazar  Esc:Volver";
+pub const MODULE_DETAIL_AUTH_DESC:  &str = "Se requieren privilegios de administrador para los detalles del módulo. Se cargará automáticamente tras la autenticación.";
+pub const MODULE_DETAIL_TITLE:      &str = " Detalle del módulo ";
+pub const MODULE_DETAIL_CIL_TITLE:  &str = " Reglas CIL ";
 
 // ── Encabezados de tabla ──────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "Cuándo";
@@ -79,8 +84,12 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Política personalizada";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Denegaciones de acceso  [Hoy]  Sin resolver: {} / Total: {} ", unresolved, total)
 }
-pub fn module_list_title(count: usize) -> String {
-    format!(" Módulos de política  {} módulos ", count)
+pub fn module_list_title(custom: usize, total: usize, show_all: bool) -> String {
+    if show_all {
+        format!(" Módulos de política  {} total ", total)
+    } else {
+        format!(" Módulos personalizados  {} / {} total ", custom, total)
+    }
 }
 pub fn module_delete_desc(name: &str) -> String {
     format!("Eliminar módulo de política '{}'.", name)

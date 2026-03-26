@@ -13,7 +13,12 @@ pub const HINT_AVC_LIST:     &str = "↑↓/jk:Bewegen  Enter:Details  /:Filtern
 pub const HINT_AVC_DETAIL:   &str = "A-F:Auswählen  Esc/←:Zurück  Enter:Bestätigen";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Scrollen  Enter:Anwenden  Esc:Abbrechen";
 pub const HINT_AUTH:         &str = "Enter:Ausführen  Esc:Abbrechen";
-pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Bewegen  d:Löschen  Esc:Zurück";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Bewegen  d:Löschen  a:Alle/Benutzer  Esc:Zurück";
+pub const MODULE_LIST_AUTH_DESC: &str = "Administratorrechte sind erforderlich, um Module aufzulisten. Wird nach der Authentifizierung automatisch geladen.";
+pub const HINT_MODULE_DETAIL:    &str = "↑↓/jk:Scrollen  Esc:Zurück";
+pub const MODULE_DETAIL_AUTH_DESC:  &str = "Administratorrechte sind für Moduldetails erforderlich. Wird nach der Authentifizierung automatisch geladen.";
+pub const MODULE_DETAIL_TITLE:      &str = " Moduldetails ";
+pub const MODULE_DETAIL_CIL_TITLE:  &str = " CIL-Regeln ";
 
 // ── Tabellenüberschriften ─────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "Wann";
@@ -79,8 +84,12 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Benutzerdefinierte Richtlinie";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Zugriffsverweigerungen  [Heute]  Ungelöst: {} / Gesamt: {} ", unresolved, total)
 }
-pub fn module_list_title(count: usize) -> String {
-    format!(" Richtlinienmodule  {} Module ", count)
+pub fn module_list_title(custom: usize, total: usize, show_all: bool) -> String {
+    if show_all {
+        format!(" Richtlinienmodule  {} gesamt ", total)
+    } else {
+        format!(" Benutzermodule  {} / {} gesamt ", custom, total)
+    }
 }
 pub fn module_delete_desc(name: &str) -> String {
     format!("Richtlinienmodul '{}' entfernen.", name)

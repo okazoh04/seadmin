@@ -13,4 +13,5 @@ pub mod avc_detail;
 pub mod auth_popup;
 pub mod policy_review;
 pub mod module_list;
+pub mod module_detail;
 pub mod path_input_popup;

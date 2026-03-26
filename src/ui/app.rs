@@ -28,6 +28,12 @@ pub enum Screen {
     },
     /// semodule -lfull で取得したモジュール管理画面
     ModuleList,
+    /// semodule -c -E で取得したモジュール CIL 詳細画面
+    ModuleDetail {
+        name: String,
+        priority: u16,
+        cil: String,
+    },
     /// パス手動入力ポップアップ（FileContext / Restorecon でパスが不明な場合）
     PathInput(usize), // AvcEntry の id
 }
@@ -125,8 +131,17 @@ pub struct App {
     /// ポリシーモジュール一覧
     pub module_list: Vec<PolicyModule>,
     pub module_cursor: usize,
+    /// true = 全モジュール表示 / false = カスタム（priority >= 300）のみ
+    /// true = 全モジュール表示 / false = カスタム（priority >= 300）のみ
+    pub module_show_all: bool,
+    /// ModuleDetail 画面のスクロール位置
+    pub module_detail_scroll: usize,
+    /// 認証後にリトライする詳細取得対象 (name, priority)
+    pub pending_module_detail: Option<(String, u16)>,
     /// PathInput ポップアップのテキスト入力バッファ
     pub path_input_buf: String,
+    /// 次フレームで terminal.clear() を呼ぶフラグ（画面遷移時の残像消去）
+    pub needs_full_redraw: bool,
 }
 
 impl App {
@@ -157,7 +172,11 @@ impl App {
             lang: crate::i18n::detect_lang(),
             module_list: Vec::new(),
             module_cursor: 0,
+            module_show_all: false,
+            module_detail_scroll: 0,
+            pending_module_detail: None,
             path_input_buf: String::new(),
+            needs_full_redraw: true,
         }
     }
 
@@ -187,6 +206,10 @@ impl App {
     }
 
     pub fn push_screen(&mut self, screen: Screen) {
+        // ModuleDetail への遷移時のみ full redraw が必要（他画面は通常の差分描画で問題ない）
+        if matches!(screen, Screen::ModuleDetail { .. }) {
+            self.needs_full_redraw = true;
+        }
         self.screen_stack.push(screen);
     }
 

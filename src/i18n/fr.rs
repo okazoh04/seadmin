@@ -13,7 +13,12 @@ pub const HINT_AVC_LIST:     &str = "↑↓/jk:Déplacer  Enter:Détails  /:Filt
 pub const HINT_AVC_DETAIL:   &str = "A-F:Sélectionner  Esc/←:Retour  Enter:Confirmer";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Défiler  Enter:Appliquer  Esc:Annuler";
 pub const HINT_AUTH:         &str = "Enter:Exécuter  Esc:Annuler";
-pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Déplacer  d:Supprimer  Esc:Retour";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Déplacer  d:Supprimer  a:Basculer tout/pers.  Esc:Retour";
+pub const MODULE_LIST_AUTH_DESC: &str = "Des privilèges d'administrateur sont requis pour lister les modules. Chargement automatique après authentification.";
+pub const HINT_MODULE_DETAIL:    &str = "↑↓/jk:Défiler  Esc:Retour";
+pub const MODULE_DETAIL_AUTH_DESC:  &str = "Des privilèges d'administrateur sont requis pour les détails du module. Chargement automatique après authentification.";
+pub const MODULE_DETAIL_TITLE:      &str = " Détails du module ";
+pub const MODULE_DETAIL_CIL_TITLE:  &str = " Règles CIL ";
 
 // ── En-têtes de tableau ───────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "Quand";
@@ -79,8 +84,12 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Politique personnalisée";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Refus d'accès  [Aujourd'hui]  Non résolus: {} / Total: {} ", unresolved, total)
 }
-pub fn module_list_title(count: usize) -> String {
-    format!(" Modules de politique  {} modules ", count)
+pub fn module_list_title(custom: usize, total: usize, show_all: bool) -> String {
+    if show_all {
+        format!(" Modules de politique  {} total ", total)
+    } else {
+        format!(" Modules personnalisés  {} / {} total ", custom, total)
+    }
 }
 pub fn module_delete_desc(name: &str) -> String {
     format!("Supprimer le module de politique '{}'.", name)

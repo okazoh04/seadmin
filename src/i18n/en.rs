@@ -13,7 +13,12 @@ pub const HINT_AVC_LIST:     &str = "↑↓/jk:Move  Enter:Detail  /:Filter  r:R
 pub const HINT_AVC_DETAIL:   &str = "A-F:Select  Esc/←:Back  Enter:Confirm";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Scroll  Enter:Apply  Esc:Cancel";
 pub const HINT_AUTH:         &str = "Enter:Execute  Esc:Cancel";
-pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Move  d:Delete  Esc:Back";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Move  d:Delete  a:Toggle all/custom  Esc:Back";
+pub const MODULE_LIST_AUTH_DESC: &str = "Administrator privileges are required to list modules. Will load automatically after authentication.";
+pub const HINT_MODULE_DETAIL:    &str = "↑↓/jk:Scroll  Esc:Back";
+pub const MODULE_DETAIL_AUTH_DESC:  &str = "Administrator privileges are required for module details. Will load automatically after authentication.";
+pub const MODULE_DETAIL_TITLE:      &str = " Module Detail ";
+pub const MODULE_DETAIL_CIL_TITLE:  &str = " CIL Rules ";
 
 // ── Table headers ─────────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "When";
@@ -79,8 +84,12 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Custom Policy";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Access Denials  [Today]  Unresolved: {} / Total: {} ", unresolved, total)
 }
-pub fn module_list_title(count: usize) -> String {
-    format!(" Policy Modules  {} modules ", count)
+pub fn module_list_title(custom: usize, total: usize, show_all: bool) -> String {
+    if show_all {
+        format!(" Policy Modules  {} total ", total)
+    } else {
+        format!(" Custom Modules  {} / {} total ", custom, total)
+    }
 }
 pub fn module_delete_desc(name: &str) -> String {
     format!("Remove policy module '{}'.", name)

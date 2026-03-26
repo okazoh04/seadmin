@@ -13,7 +13,12 @@ pub const HINT_AVC_LIST:     &str = "↑↓/jk:移動  Enter:詳細  /:フィル
 pub const HINT_AVC_DETAIL:   &str = "A-F:対処選択  Esc/←:戻る  Enter:確認へ";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:スクロール  Enter:適用  Esc:キャンセル";
 pub const HINT_AUTH:         &str = "Enter:実行  Esc:キャンセル";
-pub const HINT_MODULE_LIST:  &str = "↑↓/jk:移動  d:削除  Esc:戻る";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:移動  d:削除  a:全/カスタム切替  Esc:戻る";
+pub const MODULE_LIST_AUTH_DESC: &str = "モジュール一覧の取得に管理者権限が必要です。認証後に自動で読み込みます。";
+pub const HINT_MODULE_DETAIL:    &str = "↑↓/jk:スクロール  Esc:戻る";
+pub const MODULE_DETAIL_AUTH_DESC:  &str = "モジュール詳細の取得に管理者権限が必要です。認証後に自動で読み込みます。";
+pub const MODULE_DETAIL_TITLE:      &str = " モジュール詳細 ";
+pub const MODULE_DETAIL_CIL_TITLE:  &str = " CIL ルール ";
 
 // ── テーブルヘッダー ─────────────────────────────────────────────────────────
 pub const COL_OCCURRED:     &str = "発生";
@@ -78,8 +83,12 @@ pub const REMEDY_CUSTOM_POLICY: &str = "カスタムポリシー";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" アクセス拒否一覧  [本日]  未対処: {}件 / 全 {}件 ", unresolved, total)
 }
-pub fn module_list_title(count: usize) -> String {
-    format!(" ポリシーモジュール一覧  {} 件 ", count)
+pub fn module_list_title(custom: usize, total: usize, show_all: bool) -> String {
+    if show_all {
+        format!(" ポリシーモジュール一覧  {} 件 ", total)
+    } else {
+        format!(" カスタムモジュール  {}件 / 全{}件 ", custom, total)
+    }
 }
 pub fn module_delete_desc(name: &str) -> String {
     format!("ポリシーモジュール '{}' を削除します。", name)

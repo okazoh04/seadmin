@@ -13,7 +13,12 @@ pub const HINT_AVC_LIST:     &str = "↑↓/jk:Жылжыту  Enter:Толық 
 pub const HINT_AVC_DETAIL:   &str = "A-F:Іс-әрекет  Esc/←:Артқа  Enter:Растау";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:Айналдыру  Enter:Қолдану  Esc:Болдырмау";
 pub const HINT_AUTH:         &str = "Enter:Орындау  Esc:Болдырмау";
-pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Жылжыту  d:Жою  Esc:Артқа";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:Жылжыту  d:Жою  a:Барлық/Жеке  Esc:Артқа";
+pub const MODULE_LIST_AUTH_DESC: &str = "Модуль тізімін алу үшін әкімші құқықтары қажет. Аутентификациядан кейін автоматты түрде жүктеледі.";
+pub const HINT_MODULE_DETAIL:    &str = "↑↓/jk:Айналдыру  Esc:Артқа";
+pub const MODULE_DETAIL_AUTH_DESC:  &str = "Модуль мәліметтерін алу үшін әкімші құқықтары қажет. Аутентификациядан кейін автоматты жүктеледі.";
+pub const MODULE_DETAIL_TITLE:      &str = " Модуль мәліметтері ";
+pub const MODULE_DETAIL_CIL_TITLE:  &str = " CIL ережелері ";
 
 // ── Кесте тақырыптары ─────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "Уақыт";
@@ -79,8 +84,12 @@ pub const REMEDY_CUSTOM_POLICY: &str = "Теңшелген саясат";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" Кіруден бас тарту  [Бүгін]  Өңделмеген: {} / Барлығы: {} ", unresolved, total)
 }
-pub fn module_list_title(count: usize) -> String {
-    format!(" Саясат модульдері  {} дана ", count)
+pub fn module_list_title(custom: usize, total: usize, show_all: bool) -> String {
+    if show_all {
+        format!(" Саясат модульдері  {} дана ", total)
+    } else {
+        format!(" Жеке модульдер  {} / барлығы {} ", custom, total)
+    }
 }
 pub fn module_delete_desc(name: &str) -> String {
     format!("'{}' саясат модулін жою.", name)

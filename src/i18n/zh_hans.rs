@@ -13,7 +13,12 @@ pub const HINT_AVC_LIST:     &str = "↑↓/jk:移动  Enter:详情  /:过滤  r
 pub const HINT_AVC_DETAIL:   &str = "A-F:选择处置  Esc/←:返回  Enter:确认";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:滚动  Enter:应用  Esc:取消";
 pub const HINT_AUTH:         &str = "Enter:执行  Esc:取消";
-pub const HINT_MODULE_LIST:  &str = "↑↓/jk:移动  d:删除  Esc:返回";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:移动  d:删除  a:切换全部/自定义  Esc:返回";
+pub const MODULE_LIST_AUTH_DESC: &str = "获取模块列表需要管理员权限。认证后将自动加载。";
+pub const HINT_MODULE_DETAIL:    &str = "↑↓/jk:滚动  Esc:返回";
+pub const MODULE_DETAIL_AUTH_DESC:  &str = "获取模块详情需要管理员权限。认证后将自动加载。";
+pub const MODULE_DETAIL_TITLE:      &str = " 模块详情 ";
+pub const MODULE_DETAIL_CIL_TITLE:  &str = " CIL 规则 ";
 
 // ── 表格标题 ──────────────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "时间";
@@ -79,8 +84,12 @@ pub const REMEDY_CUSTOM_POLICY: &str = "自定义策略";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" 访问拒绝列表  [今日]  未处理: {}条 / 共 {}条 ", unresolved, total)
 }
-pub fn module_list_title(count: usize) -> String {
-    format!(" 策略模块列表  {} 个 ", count)
+pub fn module_list_title(custom: usize, total: usize, show_all: bool) -> String {
+    if show_all {
+        format!(" 策略模块列表  {} 个 ", total)
+    } else {
+        format!(" 自定义模块  {}个 / 共{}个 ", custom, total)
+    }
 }
 pub fn module_delete_desc(name: &str) -> String {
     format!("删除策略模块 '{}'。", name)

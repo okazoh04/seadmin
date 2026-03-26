@@ -13,7 +13,12 @@ pub const HINT_AVC_LIST:     &str = "↑↓/jk:이동  Enter:상세  /:필터  r
 pub const HINT_AVC_DETAIL:   &str = "A-F:선택  Esc/←:뒤로  Enter:확인";
 pub const HINT_POLICY_REVIEW:&str = "↑↓/jk:스크롤  Enter:적용  Esc:취소";
 pub const HINT_AUTH:         &str = "Enter:실행  Esc:취소";
-pub const HINT_MODULE_LIST:  &str = "↑↓/jk:이동  d:삭제  Esc:뒤로";
+pub const HINT_MODULE_LIST:  &str = "↑↓/jk:이동  d:삭제  a:전체/커스텀 전환  Esc:뒤로";
+pub const MODULE_LIST_AUTH_DESC: &str = "모듈 목록을 가져오려면 관리자 권한이 필요합니다. 인증 후 자동으로 로드됩니다.";
+pub const HINT_MODULE_DETAIL:    &str = "↑↓/jk:스크롤  Esc:뒤로";
+pub const MODULE_DETAIL_AUTH_DESC:  &str = "모듈 상세 정보를 가져오려면 관리자 권한이 필요합니다. 인증 후 자동으로 로드됩니다.";
+pub const MODULE_DETAIL_TITLE:      &str = " 모듈 상세 ";
+pub const MODULE_DETAIL_CIL_TITLE:  &str = " CIL 규칙 ";
 
 // ── 테이블 헤더 ───────────────────────────────────────────────────────────────
 pub const COL_OCCURRED: &str = "발생시각";
@@ -79,8 +84,12 @@ pub const REMEDY_CUSTOM_POLICY: &str = "커스텀 정책";
 pub fn avc_list_title(unresolved: usize, total: usize) -> String {
     format!(" 접근 거부 목록  [오늘]  미처리: {}건 / 전체: {}건 ", unresolved, total)
 }
-pub fn module_list_title(count: usize) -> String {
-    format!(" 정책 모듈 목록  {} 개 ", count)
+pub fn module_list_title(custom: usize, total: usize, show_all: bool) -> String {
+    if show_all {
+        format!(" 정책 모듈 목록  {} 개 ", total)
+    } else {
+        format!(" 사용자 모듈  {}개 / 전체 {}개 ", custom, total)
+    }
 }
 pub fn module_delete_desc(name: &str) -> String {
     format!("정책 모듈 '{}' 를 삭제합니다.", name)
