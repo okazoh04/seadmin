@@ -26,3 +26,6 @@ dirs = "5"
 strip = true
 opt-level = "z"
 lto = true
+
+[profile.dev]
+debug = "line-tables-only"
